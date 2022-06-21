@@ -1,0 +1,8 @@
+**/*.dcm
+DICOM
+mock_clinical_scp/CLINICAL_DICOM
+out
+in
+__pycache__
+.idea
+.env
