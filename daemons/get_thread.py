@@ -13,24 +13,27 @@ from pydicom import dcmread
 
 from pynetdicom import AE, debug_logger, StoragePresentationContexts
 
+from database.models import DCMNodeEndpoint
+
 LOG_FORMAT = ('%(levelname)s:%(asctime)s:%(message)s')
 logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
 logging.info("Outside Main")
 
 
 class GetJobThread(threading.Thread):
-    def __init__(self, uid: str, inference_server_endpoint, run_interval: int = 15, timeout: int = 3600, *args,
+    def __init__(self, uid: str, endpoint: DCMNodeEndpoint, run_interval: int = 15, timeout: int = 3600, *args,
                  **kwargs):
         super().__init__(*args, **kwargs)
         self.uid = uid
-        self.inference_server_endpoint = inference_server_endpoint
+        self.endpoint = endpoint
         self.run_interval = run_interval
         self.timeout = timeout
 
     def run(self) -> None:
         counter = 0
         while counter < self.timeout:
-            res = self.get()
+            res = requests.get(url=urljoin(self.endpoint.inference_server_url, self.uid),
+                               verify="certs/cert.crt")
             if res.ok:
                 logging.info("POSTING RETURNED SHIT TO CLINICAL NODE (not)")
                 with tempfile.TemporaryFile() as tmp_file:
@@ -39,10 +42,7 @@ class GetJobThread(threading.Thread):
 
                     with tempfile.TemporaryDirectory() as tmp_dir, zipfile.ZipFile(tmp_file, "r") as zip_file:
                         zip_file.extractall(tmp_dir)
-                        print(os.listdir(tmp_dir))
-                        #os.system(f"storescu 127.0.0.1 11110 {tmp_dir}/*")
                         self.post_to_dicom_node(tmp_dir)
-
                 return
 
             else:
@@ -50,9 +50,6 @@ class GetJobThread(threading.Thread):
                 time.sleep(self.run_interval)
                 counter += self.run_interval
 
-    def get(self):
-        return requests.get(url=urljoin(self.inference_server_endpoint, self.uid),
-                            verify="certs/cert.crt")
 
     def post_to_dicom_node(self, dicom_dir):
         debug_logger()
@@ -60,7 +57,7 @@ class GetJobThread(threading.Thread):
         ae = AE()
         ae.requested_contexts = StoragePresentationContexts
 
-        assoc = ae.associate("127.0.0.1", 11110)
+        assoc = ae.associate(self.endpoint.scu_ip, self.endpoint.scu_port)
         if assoc.is_established:
             # Use the C-STORE service to send the dataset
             # returns the response status as a pydicom Dataset
@@ -72,11 +69,11 @@ class GetJobThread(threading.Thread):
                 # Check the status of the storage request
                 if status:
                     # If the storage request succeeded this will be 0x0000
-                    print('C-STORE request status: 0x{0:04x}'.format(status.Status))
+                    logging.info('C-STORE request status: 0x{0:04x}'.format(status.Status))
                 else:
-                    print('Connection timed out, was aborted or received invalid response')
+                    logging.info('Connection timed out, was aborted or received invalid response')
 
             # Release the association
             assoc.release()
         else:
-            print('Association rejected, aborted or never connected')
+            logging.error('Association rejected, aborted or never connected')

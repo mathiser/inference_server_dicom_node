@@ -1,16 +1,24 @@
 import json
+import logging
+import os
+
+from database.models import DCMNodeEndpoint
 
 
 class DB:
-    def __init__(self, scp_json_path):
-        self.scp_json_path = scp_json_path
-        self.scp_details = []
-        with open(self.scp_json_path, "r") as r:
-            try:
-                self.scp_details = json.loads(r.read())
-                print(self.scp_details)
-            except Exception as e:
-                print(e)
+    def __init__(self, endpoint_dir):
+        self.endpoint_dir = endpoint_dir
+        self.dicom_endpoints = []
+        for fol, subs, files in os.walk(endpoint_dir):
+            for file in files:
+                if file.endswith(".json"):
+                    file_path = os.path.join(fol, file)
+                    try:
+                        with open(file_path, "r") as r:
+                            self.dicom_endpoints.append(DCMNodeEndpoint(**json.loads(r.read())))
 
-    def get_scp_details(self):
-        return self.scp_details
+                    except Exception as e:
+                        logging.error(e)
+
+    def get_endpoints(self):
+        return self.dicom_endpoints

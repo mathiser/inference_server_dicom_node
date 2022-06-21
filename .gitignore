@@ -1,6 +1,6 @@
 **/*.dcm
-DICOM
-mock_clinical_scp/CLINICAL_DICOM
+**/DICOM
+**/CLINICAL_DICOM
 out
 in
 __pycache__

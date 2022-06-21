@@ -1,30 +1,25 @@
+import datetime
 import json
 import logging
 import os
 import tempfile
-import threading
-import zipfile
 import time
+import zipfile
 
-import dotenv
 import requests
 
 from daemons.get_thread import GetJobThread
+from scp.models import IncomingDetails
 
 LOG_FORMAT = ('%(levelname)s:%(asctime)s:%(message)s')
 logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
-logging.info("Outside Main")
 
-class InferenceServerDaemon(threading.Thread):
+
+class InferenceServerDaemon:
     def __init__(self,
                  scp,
-                 inference_server_endpoint,
-                 run_interval: int = 15,
-                 *args, **kwargs):
-        super().__init__(*args, **kwargs)
+                 run_interval: int = 15):
         self.scp = scp
-        self.inference_server_endpoint = inference_server_endpoint
-        self.queue_dict = self.scp.queue_dict
         self.previous_queue = None
         self.run_interval = run_interval
         self.threads = []
@@ -33,46 +28,45 @@ class InferenceServerDaemon(threading.Thread):
         for t in self.threads:
             t.join()
 
-
     def run(self) -> None:
-        while self.scp:
+        while True:
             time.sleep(self.run_interval)
             logging.info("Scanning for newcomers")
-            self.previous_queue_dict = self.queue_dict.copy()
 
             to_remove = []
-            for id, details in self.queue_dict.items():
-                if details == self.previous_queue_dict[id]:
+            for id, details in self.scp.get_queue_dict().items():
+                assert isinstance(details, IncomingDetails)
+                if (datetime.datetime.now() - details.last_timestamp) > datetime.timedelta(seconds=30):
                     logging.info(f"Posting task {str(details)}")
-                    res = self.post(path=details["path"],
-                                    model_human_readable_id=details["model_human_readable_id"])
+                    res = self.post(incoming_details=details)
                     if res.ok:
-                        to_remove.append(id)  # Pop from dict
                         uid = json.loads(res.content)
                         logging.info(f"Successful post of {details}.")
                         logging.info(f"UID: {uid}")
-                        t = GetJobThread(uid=uid, inference_server_endpoint=self.inference_server_endpoint, timeout=300)
+                        t = GetJobThread(uid=uid,
+                                         endpoint=details.endpoint,
+                                         timeout=300)
                         self.threads.append(t)
+                        to_remove.append(id)  # Pop from dict
                         t.start()
                     else:
                         logging.info(f"Unsuccessful post: {res.content}")
                         continue
 
-
-
             for id in to_remove:
-                del self.queue_dict[id]
+                self.scp.delete_id_in_queue_dict(id)
 
-    def post(self, path, model_human_readable_id):
+    @staticmethod
+    def post(incoming_details: IncomingDetails):
         with tempfile.TemporaryFile() as tmp_file:
             with zipfile.ZipFile(tmp_file, "w") as zip_file:
-                for fol, subs, files in os.walk(path):
+                for fol, subs, files in os.walk(incoming_details.path):
                     for f in files:
                         zip_file.write(os.path.join(fol, f), arcname=f)
             tmp_file.seek(0)
 
-            res = requests.post(self.inference_server_endpoint,
-                                params={"model_human_readable_id": model_human_readable_id},
+            res = requests.post(incoming_details.endpoint.inference_server_url,
+                                params={"model_human_readable_id": incoming_details.endpoint.model_human_readable_id},
                                 files={"zip_file": tmp_file},
                                 verify="certs/cert.crt")
             return res

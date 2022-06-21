@@ -7,7 +7,7 @@ from pynetdicom import (
     ALL_TRANSFER_SYNTAXES
 )
 
-dotenv.load_dotenv("../.env")
+dotenv.load_dotenv("../../.env")
 debug_logger()
 
 LOG_FORMAT = ('%(levelname)s:%(asctime)s:%(message)s')
@@ -59,10 +59,11 @@ class MockClinicalSCP:
 
         try:
             # Create and run
-            logging.info("Running Clinical SCP")
-            ae_title = os.environ.get("DICOM_ENDPOINT_AE")
-            ip = os.environ.get("DICOM_ENDPOINT_IP")
-            port = int(os.environ.get("DICOM_ENDPOINT_PORT"))
+            ae_title = "CLINICAL_AE"
+            ip = "127.0.0.1"
+            port = 11110
+            logging.info(f"Running {ae_title} on {ip}:{str(port)}")
+
             ae = self.create_accepting_AE(ae_title)
             ae.start_server((ip, port), block=True, evt_handlers=handler)
 
