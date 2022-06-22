@@ -18,10 +18,12 @@ logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
 class InferenceServerDaemon:
     def __init__(self,
                  scp,
-                 run_interval: int = 15):
+                 run_interval: int = 5,
+                 send_after: int = 10):
         self.scp = scp
         self.previous_queue = None
         self.run_interval = run_interval
+        self.send_after = send_after
         self.threads = []
 
     def __del__(self):
@@ -36,7 +38,7 @@ class InferenceServerDaemon:
             to_remove = []
             for id, details in self.scp.get_queue_dict().items():
                 assert isinstance(details, IncomingDetails)
-                if (datetime.datetime.now() - details.last_timestamp) > datetime.timedelta(seconds=30):
+                if (datetime.datetime.now() - details.last_timestamp) > datetime.timedelta(seconds=self.send_after):
                     logging.info(f"Posting task {str(details)}")
                     res = self.post(incoming_details=details)
                     if res.ok:

@@ -1,4 +1,3 @@
-import glob
 import logging
 import os
 import tempfile
@@ -8,9 +7,7 @@ import zipfile
 from urllib.parse import urljoin
 
 import requests
-
 from pydicom import dcmread
-
 from pynetdicom import AE, debug_logger, StoragePresentationContexts
 
 from database.models import DCMNodeEndpoint
@@ -32,23 +29,32 @@ class GetJobThread(threading.Thread):
     def run(self) -> None:
         counter = 0
         while counter < self.timeout:
-            res = requests.get(url=urljoin(self.endpoint.inference_server_url, self.uid),
-                               verify="certs/cert.crt")
-            if res.ok:
-                logging.info("POSTING RETURNED SHIT TO CLINICAL NODE (not)")
-                with tempfile.TemporaryFile() as tmp_file:
-                    tmp_file.write(res.content)
-                    tmp_file.seek(0)
+            try:
+                res = requests.get(url=urljoin(self.endpoint.inference_server_url, self.uid),
+                                   verify="certs/cert.crt")
+                logging.info(res)
+                logging.info(str(res.content))
+                if res.ok:
+                    logging.info("POSTING RETURNED SHIT TO CLINICAL NODE (not)")
+                    with tempfile.TemporaryFile() as tmp_file:
+                        tmp_file.write(res.content)
+                        tmp_file.seek(0)
 
-                    with tempfile.TemporaryDirectory() as tmp_dir, zipfile.ZipFile(tmp_file, "r") as zip_file:
-                        zip_file.extractall(tmp_dir)
-                        self.post_to_dicom_node(tmp_dir)
-                return
+                        with tempfile.TemporaryDirectory() as tmp_dir, zipfile.ZipFile(tmp_file, "r") as zip_file:
+                            zip_file.extractall(tmp_dir)
+                            self.post_to_dicom_node(tmp_dir)
+                    return
+                if res.status_code == 552:
+                    logging.error(str(res.content))
+                    logging.error("Quitting this task - contact admin for help")
+                    return
 
-            else:
-                logging.info(f"WAITING FOR RETURNED SHIT TO CLINICAL NODE {str(counter)} on UID {self.uid}")
-                time.sleep(self.run_interval)
-                counter += self.run_interval
+            except Exception as e:
+                logging.error(e)
+
+            logging.info(f"WAITING FOR RETURNED SHIT TO CLINICAL NODE {str(counter)} on UID {self.uid}")
+            time.sleep(self.run_interval)
+            counter += self.run_interval
 
 
     def post_to_dicom_node(self, dicom_dir):

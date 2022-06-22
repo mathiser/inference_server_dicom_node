@@ -48,20 +48,20 @@ class SCP:
         # Add the File Meta Information
         ds.file_meta = event.file_meta
 
-        tsuid = ds.file_meta.TransferSyntaxUID
-        path = str(os.path.join(endpoint.scp_storage_dir, tsuid))
-
-        if tsuid not in self.queue_dict.keys():
-            self.queue_dict[ds.file_meta.TransferSyntaxUID] = IncomingDetails(endpoint=endpoint,
-                                                                              path=path,
-                                                                              last_timestamp=event.timestamp,
-                                                                              first_timestamp=event.timestamp,
-                                                                              TransferSyntaxUID=tsuid)
-        else:
-            self.queue_dict[tsuid].last_timestamp = event.timestamp
+        pid = ds.PatientID
+        path = str(os.path.join(endpoint.scp_storage_dir, pid))
 
         # make dir for the incoming
         os.makedirs(path, exist_ok=True)
+
+        if pid not in self.queue_dict.keys():
+            self.queue_dict[pid] = IncomingDetails(endpoint=endpoint,
+                                                   path=path,
+                                                   last_timestamp=event.timestamp,
+                                                   first_timestamp=event.timestamp,
+                                                   PatientId=pid)
+        else:
+            self.queue_dict[pid].last_timestamp = event.timestamp
 
         # Save the dataset using the SOP Instance UID as the filename
         ds.save_as(os.path.join(path, ds.SOPInstanceUID + ".dcm"), write_like_original=False)
@@ -88,7 +88,8 @@ class SCP:
         ]
 
         try:
-            logging.info(f"Starting SCP -- InferenceServer model: {endpoint.model_human_readable_id} on: {endpoint.scp_ip}:{str(endpoint.scp_port)}")
+            logging.info(
+                f"Starting SCP -- InferenceServer model: {endpoint.model_human_readable_id} on: {endpoint.scp_ip}:{str(endpoint.scp_port)}")
 
             # Create and run
             ae = self.create_accepting_AE(endpoint.scp_ae_title)
