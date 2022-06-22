@@ -27,7 +27,7 @@ class MockClinicalSCP:
         # Add the File Meta Information
         ds.file_meta = event.file_meta
 
-        tsuid = ds.file_meta.TransferSyntaxUID
+        tsuid = ds.PatientID
         path = str(os.path.join(storage_dir, tsuid))
 
         # make dir for the incoming
