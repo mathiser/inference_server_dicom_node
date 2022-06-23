@@ -27,6 +27,7 @@ class InferenceServerDaemon:
         self.send_after = send_after
         self.timeout = timeout
         self.threads = []
+        self.cert = os.path.join(os.path.dirname(__file__), "certs/cert.crt")
 
     def __del__(self):
         for t in self.threads:
@@ -60,8 +61,7 @@ class InferenceServerDaemon:
             for id in to_remove:
                 self.scp.delete_id_in_queue_dict(id)
 
-    @staticmethod
-    def post(incoming_details: IncomingDetails):
+    def post(self, incoming_details: IncomingDetails):
         with tempfile.TemporaryFile() as tmp_file:
             with zipfile.ZipFile(tmp_file, "w") as zip_file:
                 for fol, subs, files in os.walk(incoming_details.path):
@@ -72,5 +72,5 @@ class InferenceServerDaemon:
             res = requests.post(incoming_details.endpoint.inference_server_url,
                                 params={"model_human_readable_id": incoming_details.endpoint.model_human_readable_id},
                                 files={"zip_file": tmp_file},
-                                verify="certs/cert.crt")
+                                verify=self.cert)
             return res

@@ -25,13 +25,14 @@ class GetJobThread(threading.Thread):
         self.endpoint = endpoint
         self.run_interval = run_interval
         self.timeout = timeout
+        self.cert = os.path.join(os.path.dirname(__file__), "certs/cert.crt")
 
     def run(self) -> None:
         counter = 0
         while counter < self.timeout:
             try:
                 res = requests.get(url=urljoin(self.endpoint.inference_server_url, self.uid),
-                                   verify="certs/cert.crt")
+                                   verify=self.cert)
                 logging.info(res)
                 logging.info(str(res.content))
                 if res.ok:
