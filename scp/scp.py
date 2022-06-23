@@ -47,7 +47,6 @@ class SCP:
 
         # Add the File Meta Information
         ds.file_meta = event.file_meta
-
         pid = ds.PatientID
         path = str(os.path.join(endpoint.scp_storage_dir, pid))
 

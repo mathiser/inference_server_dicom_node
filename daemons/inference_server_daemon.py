@@ -19,11 +19,13 @@ class InferenceServerDaemon:
     def __init__(self,
                  scp,
                  run_interval: int = 5,
-                 send_after: int = 10):
+                 send_after: int = 10,
+                 timeout: int = 7200):
         self.scp = scp
         self.previous_queue = None
         self.run_interval = run_interval
         self.send_after = send_after
+        self.timeout = timeout
         self.threads = []
 
     def __del__(self):
@@ -47,7 +49,7 @@ class InferenceServerDaemon:
                         logging.info(f"UID: {uid}")
                         t = GetJobThread(uid=uid,
                                          endpoint=details.endpoint,
-                                         timeout=300)
+                                         timeout=self.timeout)
                         self.threads.append(t)
                         to_remove.append(id)  # Pop from dict
                         t.start()
