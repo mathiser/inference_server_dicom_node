@@ -1,5 +1,6 @@
 import logging
 import os
+import sys
 
 import dotenv
 from pynetdicom import (
@@ -16,7 +17,8 @@ logging.info("Outside Main")
 
 
 class MockClinicalSCP:
-    def __init__(self):
+    def __init__(self, port: int):
+        self.port = port
         self.dicom_dir = 'CLINICAL_DICOM'
         os.makedirs(self.dicom_dir, exist_ok=True)
 
@@ -61,7 +63,7 @@ class MockClinicalSCP:
             # Create and run
             ae_title = "CLINICAL_AE"
             ip = "127.0.0.1"
-            port = 11110
+            port = self.port
             logging.info(f"Running {ae_title} on {ip}:{str(port)}")
 
             ae = self.create_accepting_AE(ae_title)
@@ -76,5 +78,6 @@ class MockClinicalSCP:
 
 
 if __name__ == "__main__":
-    scp = MockClinicalSCP()
+    port = int(sys.argv[1])
+    scp = MockClinicalSCP(port=port)
     scp.run_scp()
