@@ -18,4 +18,4 @@ RUN mkdir -p $DICOM_ENDPOINTS
 WORKDIR /opt/app/
 COPY . /opt/app/
 
-CMD /usr/bin/python3 main.py
+CMD /usr/bin/python3 src/main.py

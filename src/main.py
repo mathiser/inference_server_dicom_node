@@ -11,7 +11,7 @@ dotenv.load_dotenv()
 def main():
     db = DB(os.environ.get("DICOM_ENDPOINTS"))
 
-    scp = SCP(dcm_node_endpoints=db.get_endpoints(), db=db, storage_dir=os.environ.get("DATADIR"))
+    scp = SCP(dcm_node_endpoints=db.get_endpoints(), db=db)
     scp.run_all_scps()
 
     daemon = InferenceServerDaemon(scp=scp, run_interval=10, send_after=15)
