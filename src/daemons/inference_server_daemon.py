@@ -27,7 +27,7 @@ class InferenceServerDaemon:
         self.send_after = send_after
         self.timeout = timeout
         self.threads = []
-        self.cert = os.path.join(os.path.dirname(__file__), "certs/cert.crt")
+        self.cert = "/CERTS/cert.crt"
 
     def __del__(self):
         for t in self.threads:

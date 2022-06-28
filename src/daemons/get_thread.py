@@ -25,7 +25,7 @@ class GetJobThread(threading.Thread):
         self.endpoint = endpoint
         self.run_interval = run_interval
         self.timeout = timeout
-        self.cert = os.path.join(os.path.dirname(__file__), "certs/cert.crt")
+        self.cert = "/CERTS/cert.crt"
 
     def run(self) -> None:
         counter = 0
