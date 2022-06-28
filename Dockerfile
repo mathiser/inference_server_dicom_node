@@ -9,5 +9,13 @@ RUN pip install -r /requirements.txt
 
 RUN mkdir -p /opt/app/
 
+ENV DATADIR=/DATA
+RUN mkdir -p $DATADIR
+
+ENV DICOM_ENDPOINTS=/DICOM_ENDPOINTS
+RUN mkdir -p $DICOM_ENDPOINTS
+
 WORKDIR /opt/app/
-COPY dicom_node /opt/app/
+COPY . /opt/app/
+
+CMD /usr/bin/python3 main.py

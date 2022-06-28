@@ -55,7 +55,7 @@ class InferenceServerDaemon:
                         to_remove.append(id)  # Pop from dict
                         t.start()
                     else:
-                        logging.info(f"Unsuccessful post: {res.content}")
+                        logging.info(f"Unsuccessful post to {details.endpoint.scu_ip}: {details.endpoint.scu_port}, {details}")
                         continue
 
             for id in to_remove:
