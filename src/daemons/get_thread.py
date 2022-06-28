@@ -46,7 +46,7 @@ class GetJobThread(threading.Thread):
                             self.post_to_dicom_node(tmp_dir)
                     return
                 if res.status_code == 552:
-                    logging.error(str(res.content))
+                    logging.error(str(res))
                     logging.error("Quitting this task - contact admin for help")
                     return
 
