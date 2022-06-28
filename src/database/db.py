@@ -19,6 +19,8 @@ class DB:
 
                     except Exception as e:
                         logging.error(e)
+        if len(self.dicom_endpoints) == 0:
+            logging.info("No dicom endpoints found")
 
     def get_endpoints(self):
         return self.dicom_endpoints
