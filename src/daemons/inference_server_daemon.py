@@ -18,13 +18,11 @@ logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
 class InferenceServerDaemon:
     def __init__(self,
                  scp,
-                 run_interval: int = 5,
-                 send_after: int = 10,
-                 timeout: int = 7200):
+                 run_interval: int = 10,
+                 timeout: int = 18000):
         self.scp = scp
         self.previous_queue = None
         self.run_interval = run_interval
-        self.send_after = send_after
         self.timeout = timeout
         self.threads = []
         self.cert = "/CERTS/cert.crt"
@@ -41,7 +39,7 @@ class InferenceServerDaemon:
             to_remove = []
             for id, details in self.scp.get_queue_dict().items():
                 assert isinstance(details, IncomingDetails)
-                if (datetime.datetime.now() - details.last_timestamp) > datetime.timedelta(seconds=self.send_after):
+                if (datetime.datetime.now() - details.last_timestamp) > datetime.timedelta(seconds=self.run_interval):
                     logging.info(f"Posting task {str(details)}")
                     res = self.post(incoming_details=details)
                     if res.ok:
