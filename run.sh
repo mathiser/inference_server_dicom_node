@@ -10,6 +10,6 @@ docker run \
   -d \
   --restart=always \
   --network=host \
-  --volume $(realpath $1):/DICOM_ENDPOINT \
+  --volume $(realpath $1):/DICOM_ENDPOINTS \
   --name dicom_node_scp \
   mathiser/inference_server_dicom_node:v0.1
