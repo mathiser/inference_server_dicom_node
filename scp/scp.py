@@ -21,9 +21,9 @@ logging.info("Outside Main")
 
 
 class SCP:
-    def __init__(self, dcm_node_endpoints: List[DCMNodeEndpoint], db: DB):
+    def __init__(self, dcm_node_endpoints: List[DCMNodeEndpoint], db: DB, storage_dir: str):
         self.dcm_node_endpoints = dcm_node_endpoints  # {"ip": str, "port": int, "model_human_readable_id": str}
-
+        self.storage_dir = storage_dir
         self.db = db
 
         self.aes = []
@@ -49,7 +49,7 @@ class SCP:
         # Add the File Meta Information
         ds.file_meta = event.file_meta
         pid = ds.PatientID
-        path = str(os.path.join(endpoint.scp_storage_dir, pid))
+        path = str(os.path.join(self.storage_dir, endpoint.scp_ae_title, pid))
 
         # make dir for the incoming
         os.makedirs(path, exist_ok=True)
