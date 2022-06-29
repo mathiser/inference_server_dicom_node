@@ -1,9 +1,12 @@
 {
-  "modality": "CT",
-  "study_description_keywords": ["HN", "CNS", "HEST"],
-  "inference_server_url": "https://some-inferenceserver/api/tasks/",
-  "model_human_readable_id": "hello-world",
-  "scu_ip": "127.0.0.1",
-  "scu_port":  "11110",
-  "scu_ae_title": "PACS_TITLE"
+  "modality": "MR",
+  "study_description_keywords": ["*"],
+  "inference_server_url": "https://omen.onerm.dk/api/tasks/",
+  "model_human_readable_id": "cns_t1_oars",
+  "scus":[
+    {
+      "scu_ip": "127.0.0.1",
+      "scu_port":  "11110",
+      "scu_ae_title": "DICOM_ENDPOINT_AE"}
+  ]
 }

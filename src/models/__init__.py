@@ -1,2 +1,2 @@
-from .fingerprint import Fingerprint
+from .fingerprint import Fingerprint, SCU
 from .incoming import Incoming

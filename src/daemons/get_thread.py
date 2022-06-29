@@ -10,7 +10,7 @@ import requests
 from pydicom import dcmread
 from pynetdicom import AE, debug_logger, StoragePresentationContexts
 
-from models import Fingerprint
+from models import Fingerprint, SCU
 
 LOG_FORMAT = ('%(levelname)s:%(asctime)s:%(message)s')
 logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
@@ -49,7 +49,8 @@ class GetJobThread(threading.Thread):
 
                         with tempfile.TemporaryDirectory() as tmp_dir, zipfile.ZipFile(tmp_file, "r") as zip_file:
                             zip_file.extractall(tmp_dir)
-                            self.post_to_dicom_node(tmp_dir)
+                            for scu in self.fingerprint.scus:
+                                self.post_to_dicom_node(dicom_dir=tmp_dir, scu=scu)
                     return
                 if res.status_code == 552:
                     logging.error(str(res))
@@ -64,13 +65,13 @@ class GetJobThread(threading.Thread):
             counter += self.run_interval
 
 
-    def post_to_dicom_node(self, dicom_dir):
+    def post_to_dicom_node(self, scu: SCU, dicom_dir):
         debug_logger()
 
         ae = AE()
         ae.requested_contexts = StoragePresentationContexts
 
-        assoc = ae.associate(self.fingerprint.scu_ip, self.fingerprint.scu_port)
+        assoc = ae.associate(scu.scu_ip, scu.scu_port)
         if assoc.is_established:
             # Use the C-STORE service to send the dataset
             # returns the response status as a pydicom Dataset
