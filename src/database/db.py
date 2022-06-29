@@ -6,7 +6,7 @@ from typing import List
 import sys
 
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
-from models import Fingerprint, Incoming
+from models import Fingerprint, Incoming, SCU
 
 
 class DB:
@@ -19,7 +19,14 @@ class DB:
                     file_path = os.path.join(fol, file)
                     try:
                         with open(file_path, "r") as r:
-                            self.fingerprints.append(Fingerprint(**json.loads(r.read())))
+                            fp_dict = json.loads(r.read())
+                            fp = Fingerprint(modality=fp_dict["modality"],
+                                             study_description_keywords=fp_dict["study_description_keywords"],
+                                             inference_server_url=fp_dict["inference_server_url"],
+                                             model_human_readable_id=fp_dict["model_human_readable_id"],
+                                             scus=[SCU(**scu) for scu in fp_dict["scus"]])
+
+                            self.fingerprints.append(fp)
 
                     except Exception as e:
                         logging.error(e)
@@ -40,14 +47,16 @@ class DB:
 
 if __name__ == "__main__":
     with tempfile.TemporaryDirectory() as d:
-        fp = {"modality": "CT",
-              "study_description_keywords": ["HN", "CNS", "HEST"],
-              "inference_server_url": "https://some-inferenceserver/api/tasks/",
-              "model_human_readable_id": "hello-world",
-              "scu_ip": "127.0.0.1",
-              "scu_port": "11110",
-              "scu_ae_title": "PACS_TITLE"
-              }
+        fp = {"modality": "MR",
+              "study_description_keywords": ["*"],
+              "inference_server_url": "https://omen.onerm.dk/api/tasks/",
+              "model_human_readable_id": "cns_t1_oars",
+              "scus": [{"scu_ip": "127.0.0.1",
+                   "scu_port": 11110,
+                   "scu_ae_title": "DICOM_ENDPOINT_AE"}
+              ]}
+
+
         with open(os.path.join(d, "fingerprint.json"), "w") as f:
             f.write(json.dumps(fp))
         db = DB(d)
