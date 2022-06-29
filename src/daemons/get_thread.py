@@ -10,7 +10,7 @@ import requests
 from pydicom import dcmread
 from pynetdicom import AE, debug_logger, StoragePresentationContexts
 
-from database.models import DCMNodeEndpoint
+from models import Fingerprint
 
 LOG_FORMAT = ('%(levelname)s:%(asctime)s:%(message)s')
 logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
@@ -18,20 +18,26 @@ logging.info("Outside Main")
 
 
 class GetJobThread(threading.Thread):
-    def __init__(self, uid: str, endpoint: DCMNodeEndpoint, run_interval: int = 15, timeout: int = 3600, *args,
+    def __init__(self,
+                 uid: str,
+                 fingerprint: Fingerprint,
+                 cert_file: str,
+                 run_interval: int = 15,
+                 timeout: int = 3600,
+                 *args,
                  **kwargs):
         super().__init__(*args, **kwargs)
         self.uid = uid
-        self.endpoint = endpoint
+        self.fingerprint = fingerprint
         self.run_interval = run_interval
         self.timeout = timeout
-        self.cert = "/CERTS/cert.crt"
+        self.cert = cert_file
 
     def run(self) -> None:
         counter = 0
         while counter < self.timeout:
             try:
-                res = requests.get(url=urljoin(self.endpoint.inference_server_url, self.uid),
+                res = requests.get(url=urljoin(self.fingerprint.inference_server_url, self.uid),
                                    verify=self.cert)
                 logging.info(res)
                 logging.info(str(res.content))
@@ -64,7 +70,7 @@ class GetJobThread(threading.Thread):
         ae = AE()
         ae.requested_contexts = StoragePresentationContexts
 
-        assoc = ae.associate(self.endpoint.scu_ip, self.endpoint.scu_port)
+        assoc = ae.associate(self.fingerprint.scu_ip, self.fingerprint.scu_port)
         if assoc.is_established:
             # Use the C-STORE service to send the dataset
             # returns the response status as a pydicom Dataset

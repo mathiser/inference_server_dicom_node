@@ -1,7 +1,6 @@
 {
-  "scp_ip": "127.0.0.1",
-  "scp_port": "11111",
-  "scp_ae_title": "DICOM_RECEIVER",
+  "modality": "CT",
+  "study_description_keywords": ["HN", "CNS", "HEST"],
   "inference_server_url": "https://some-inferenceserver/api/tasks/",
   "model_human_readable_id": "hello-world",
   "scu_ip": "127.0.0.1",

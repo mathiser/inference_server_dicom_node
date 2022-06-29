@@ -1,3 +1,4 @@
+import json
 import os
 
 import dotenv
@@ -8,14 +9,26 @@ from daemons.inference_server_daemon import InferenceServerDaemon
 
 dotenv.load_dotenv()
 
+
 def main():
-    db = DB(os.environ.get("DICOM_ENDPOINTS"))
+    with open(os.environ.get("SCP_CONFIG_JSON")) as r:
+        scp_config = json.loads(r.read())
 
-    scp = SCP(dcm_node_endpoints=db.get_endpoints(), db=db)
-    scp.run_all_scps()
+    scp = SCP(hostname=scp_config["hostname"],
+              port=scp_config["port"],
+              ae_title=scp_config["ae_title"],
+              storage_dir=os.environ.get("INCOMING_DIR"),
+              block=False)
+    scp.run_scp()
 
-    daemon = InferenceServerDaemon(scp=scp, run_interval=10)
-    daemon.run()
+    db = DB(os.environ.get("FINGERPRINT_DIR"))
+    daemon = InferenceServerDaemon(scp=scp,
+                                   db=db,
+                                   cert_file=os.environ.get("CERT_FILE"),
+                                   timeout=7200,
+                                   run_interval=10)
+    daemon.run()  # Blocks
 
-if __name__=="__main__":
+
+if __name__ == "__main__":
     main()

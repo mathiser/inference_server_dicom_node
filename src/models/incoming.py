@@ -2,12 +2,10 @@ import datetime
 
 from pydantic import BaseModel
 
-from database.models import DCMNodeEndpoint
-
-
-class IncomingDetails(BaseModel):
-    endpoint: DCMNodeEndpoint
+class Incoming(BaseModel):
     path: str
     last_timestamp: datetime.datetime
     first_timestamp: datetime.datetime
-    PatientId: str
+    PatientID: str
+    StudyDescription: str
+    Modality: str
