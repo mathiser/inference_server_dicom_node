@@ -40,7 +40,6 @@ class GetJobThread(threading.Thread):
                 res = requests.get(url=urljoin(self.fingerprint.inference_server_url, self.uid),
                                    verify=self.cert)
                 logging.info(res)
-                logging.info(str(res.content))
                 if res.ok:
                     logging.info("POSTING RETURNED SHIT TO CLINICAL NODE (not)")
                     with tempfile.TemporaryFile() as tmp_file:
@@ -71,7 +70,7 @@ class GetJobThread(threading.Thread):
         ae = AE()
         ae.requested_contexts = StoragePresentationContexts
 
-        assoc = ae.associate(scu.scu_ip, scu.scu_port)
+        assoc = ae.associate(scu.scu_ip, scu.scu_port, ae_title=scu.scu_ae_title)
         if assoc.is_established:
             # Use the C-STORE service to send the dataset
             # returns the response status as a pydicom Dataset
