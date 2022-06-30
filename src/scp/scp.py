@@ -53,8 +53,12 @@ class SCP:
         # Add the File Meta Information
         ds.file_meta = event.file_meta
         pid = ds.PatientID
-        study_description = ds.StudyDescription.upper()
         modality = ds.Modality.upper()
+
+        try:
+            study_description = ds.StudyDescription.upper()
+        except:
+            study_description = "None"
 
         logging.info(f"Received dicom: Study description: {study_description}, Modality: {modality}")
 
