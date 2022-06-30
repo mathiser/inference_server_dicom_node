@@ -25,11 +25,13 @@ class InferenceServerDaemon:
                  scp: SCP,
                  db: DB,
                  cert_file: str,
-                 run_interval: int = 10,
-                 timeout: int = 18000,
+                 run_interval: int = 1,
+                 send_after: int = 10,
+                 timeout: int = 86400,
                  ):
         self.scp = scp
         self.run_interval = run_interval
+        self.send_after = send_after
         self.timeout = timeout
         self.threads = []
         self.db = db
@@ -89,4 +91,4 @@ class InferenceServerDaemon:
             return res
 
     def is_ready_to_post(self, incoming: Incoming):
-        return (datetime.datetime.now() - incoming.last_timestamp) > datetime.timedelta(seconds=self.run_interval)
+        return (datetime.datetime.now() - incoming.last_timestamp) > datetime.timedelta(seconds=self.send_after)
