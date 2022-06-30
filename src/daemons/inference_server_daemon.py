@@ -42,8 +42,6 @@ class InferenceServerDaemon:
     def run(self) -> None:
         while True:
             time.sleep(self.run_interval)
-            logging.info("Scanning for newcomers")
-
             to_remove = []
             for id, incoming in self.scp.get_queue_dict().items():
                 assert isinstance(incoming, Incoming)
