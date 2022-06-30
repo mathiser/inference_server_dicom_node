@@ -32,6 +32,8 @@ class DB:
                         logging.error(e)
         if len(self.fingerprints) == 0:
             logging.info("No fingerprints found")
+        else:
+            logging.info(f"Found the following fingerprints: {str(self.fingerprints)}")
 
     def get_fingerprints(self):
         return self.fingerprints
