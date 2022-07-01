@@ -39,13 +39,15 @@ class DB:
         return self.fingerprints
 
     def get_fingerprint_from_incoming(self, incoming: Incoming) -> List[Fingerprint]:
+        to_return = []
         for fingerprint in self.fingerprints:
             if fingerprint.modality == incoming.Modality or fingerprint.modality == "*":
                 for kw in fingerprint.study_description_keywords:
                     if kw in incoming.StudyDescription or kw == "*":
-                        yield fingerprint
+                        to_return.append(fingerprint)
                         break  # Breaking keyword loop
 
+        return to_return
 
 if __name__ == "__main__":
     with tempfile.TemporaryDirectory() as d:

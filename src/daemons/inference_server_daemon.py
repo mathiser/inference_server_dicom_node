@@ -44,20 +44,28 @@ class InferenceServerDaemon:
     def run(self) -> None:
         while True:
             time.sleep(self.run_interval)
-            to_remove = []
+            to_remove = set()
             for id, incoming in self.scp.get_queue_dict().items():
                 assert isinstance(incoming, Incoming)
 
                 if self.is_ready_to_post(incoming):
-                    logging.info(f"Posting task in folder: {str(incoming.path)}")
+                    logging.info(f"{str(incoming)} is untouched for {str(self.send_after)} seconds.")
 
                     fingerprints = self.db.get_fingerprint_from_incoming(incoming)
-                    logging.info(f"... on matching models: {str(fingerprints)} for {str(incoming.path)}")
+                    logging.info(f"Found {str(len(fingerprints))} matching fingerprints for {str(incoming)}")
+
+                    if len(fingerprints) == 0:
+                        logging.info(f"Removing: {str(incoming)}")
+                        to_remove.add(id)  # Pop from dict
+                        continue
 
                     # Post for each model
                     for fingerprint in fingerprints:
+                        logging.info(f"... on matching models for {str(incoming.path)}: {str([n for n in fingerprint])}")
                         res = self.post(incoming=incoming,
                                         fingerprint=fingerprint)
+                        logging.info(res)
+                        logging.info(str(res.content))
                         if res.ok:
                             uid = json.loads(res.content)
                             logging.info(f"Successful post of {incoming}.")
@@ -67,11 +75,11 @@ class InferenceServerDaemon:
                                              timeout=self.timeout,
                                              cert_file=self.cert)
                             self.threads.append(t)
-                            to_remove.append(id)  # Pop from dict
+                            to_remove.add(id)  # Pop from dict
                             t.start()
                         else:
-                            logging.info(f"Unsuccessful post to {incoming.fingerprint.scu_ip}: {incoming.fingerprint.scu_port}, {incoming}")
-                            continue
+                            print(res)
+                            logging.error(f"Unsuccessful post to {incoming.fingerprint.scu_ip}: {incoming.fingerprint.scu_port}, {incoming}")
 
             for id in to_remove:
                 self.scp.delete_id_in_queue_dict(id)
