@@ -42,7 +42,7 @@ class GetJobThread(threading.Thread):
                                    verify=self.cert)
                 logging.info(res)
                 if res.ok:
-                    logging.info(f"POSTING PREDICTIONS WITH SCU: {self.uid}")
+                    logging.info(f"Posting InferenceServer response to SCUs: {self.uid}")
                     with tempfile.TemporaryFile() as tmp_file:
                         tmp_file.write(res.content)
                         tmp_file.seek(0)
@@ -59,7 +59,7 @@ class GetJobThread(threading.Thread):
                     return
 
                 else:
-                    logging.info(f"WAITING FOR RETURNED SHIT TO CLINICAL NODE {str(counter)} on UID {self.uid}")
+                    logging.info(f"Waited for response for {str(counter)} seconds on UID {self.uid}")
                     time.sleep(self.run_interval)
                     counter += self.run_interval
 
@@ -70,7 +70,7 @@ class GetJobThread(threading.Thread):
 
 
     def post_to_dicom_node(self, scu: SCU, dicom_dir):
-        debug_logger()
+        #debug_logger()
 
         ae = AE()
         ae.requested_contexts = StoragePresentationContexts
