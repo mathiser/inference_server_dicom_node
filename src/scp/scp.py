@@ -11,7 +11,7 @@ from pynetdicom import (
 )
 from models import Incoming
 
-debug_logger()
+#debug_logger()
 
 LOG_FORMAT = ('%(levelname)s:%(asctime)s:%(message)s')
 logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
