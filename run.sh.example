@@ -12,4 +12,4 @@ docker run \
   --network=host \
   --volume $(realpath $1):/CONFIGURATION \
   --name dicom_node_scp \
-  mathiser/inference_server_dicom_node:dev
+  mathiser/inference_server_dicom_node:v0.2.1
