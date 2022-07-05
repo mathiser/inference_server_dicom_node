@@ -15,7 +15,6 @@ from models import Fingerprint, SCU
 
 LOG_FORMAT = ('%(levelname)s:%(asctime)s:%(message)s')
 logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
-logging.info("Outside Main")
 
 
 class GetJobThread(threading.Thread):

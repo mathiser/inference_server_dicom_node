@@ -6,8 +6,7 @@ import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
 from pynetdicom import (
-    AE, debug_logger, evt, AllStoragePresentationContexts,
-    ALL_TRANSFER_SYNTAXES
+    AE, evt, StoragePresentationContexts
 )
 from models import Incoming
 
@@ -15,8 +14,6 @@ from models import Incoming
 
 LOG_FORMAT = ('%(levelname)s:%(asctime)s:%(message)s')
 logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
-logging.info("Outside Main")
-
 
 class SCP:
     def __init__(self,
@@ -62,7 +59,7 @@ class SCP:
 
         logging.info(f"Received dicom: Study description: {study_description}, Modality: {modality}")
 
-        path = os.path.join(self.storage_dir, pid, modality, study_description)
+        path = os.path.join(self.storage_dir, pid, study_description, modality)
         # make dir for the incoming
         os.makedirs(path, exist_ok=True)
 
@@ -83,17 +80,19 @@ class SCP:
         return 0x0000
 
     def create_accepting_ae(self):
-        ae_temp = AE(ae_title=self.ae_title)
-        storage_sop_classes = [
-            cx.abstract_syntax for cx in AllStoragePresentationContexts
-        ]
-        for uid in storage_sop_classes:
-            ae_temp.add_supported_context(uid, ALL_TRANSFER_SYNTAXES)
+        ae = AE(ae_title=self.ae_title)
+        ae.requested_contexts = StoragePresentationContexts
 
-        ae_temp.add_supported_context('1.2.840.10008.1.1', ALL_TRANSFER_SYNTAXES)  # Verification SOP Class
-        ae_temp.add_supported_context('1.2.840.10008.3.1.1.1', ALL_TRANSFER_SYNTAXES)  # DICOM Application Context Name
-        ae_temp.add_supported_context('1.2.840.10008.5.1.4.1.1.11.1', ALL_TRANSFER_SYNTAXES)  # Not sure
-        return ae_temp
+        # storage_sop_classes = [
+        #     cx.abstract_syntax for cx in AllStoragePresentationContexts
+        # ]
+        # for uid in storage_sop_classes:
+        #     ae_temp.add_supported_context(uid, ALL_TRANSFER_SYNTAXES)
+
+        # ae_temp.add_supported_context('1.2.840.10008.1.1', ALL_TRANSFER_SYNTAXES)  # Verification SOP Class
+        # ae_temp.add_supported_context('1.2.840.10008.3.1.1.1', ALL_TRANSFER_SYNTAXES)  # DICOM Application Context Name
+        # ae_temp.add_supported_context('1.2.840.10008.5.1.4.1.1.11.1', ALL_TRANSFER_SYNTAXES)  # Not sure
+        return ae
 
     def run_scp(self):
         handler = [
