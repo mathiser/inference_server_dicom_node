@@ -86,8 +86,7 @@ class SCP:
 
     def create_accepting_ae(self):
         ae = AE(ae_title=self.ae_title)
-        ae.requested_contexts = StoragePresentationContexts
-
+        ae.supported_contexts = StoragePresentationContexts
         return ae
 
     def run_scp(self):
