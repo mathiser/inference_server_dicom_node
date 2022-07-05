@@ -11,12 +11,9 @@ dotenv.load_dotenv()
 
 
 def main():
-    with open(os.environ.get("SCP_CONFIG_JSON")) as r:
-        scp_config = json.loads(r.read())
-
-    scp = SCP(hostname=scp_config["hostname"],
-              port=scp_config["port"],
-              ae_title=scp_config["ae_title"],
+    scp = SCP(hostname=os.environ.get("SCP_HOSTNAME"),
+              port=int(os.environ.get("SCP_PORT")),
+              ae_title=os.environ.get("SCP_AE_TITLE"),
               storage_dir=os.environ.get("INCOMING_DIR"),
               block=False)
     scp.run_scp()
@@ -25,8 +22,11 @@ def main():
     daemon = InferenceServerDaemon(scp=scp,
                                    db=db,
                                    cert_file=os.environ.get("CERT_FILE"),
-                                   timeout=7200,
-                                   run_interval=10)
+                                   timeout=int(os.environ.get("GET_TIMEOUT")),
+                                   run_interval=int(os.environ.get("RUN_INTERVAL")),
+                                   send_after=int(os.environ.get("SEND_AFTER")),
+                                   delete_on_send=bool(os.environ.get("DELETE_ON_SEND"))
+                                   )
     daemon.run()  # Blocks
 
 

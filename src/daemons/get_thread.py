@@ -7,23 +7,22 @@ import zipfile
 from urllib.parse import urljoin
 
 import requests
-from pydicom import dcmread
-from pydicom._storage_sopclass_uids import MRImageStorage, RawDataStorage
-from pynetdicom import AE, debug_logger, StoragePresentationContexts, ALL_TRANSFER_SYNTAXES
-
 from models import Fingerprint, SCU
+from pydicom import dcmread
+from pynetdicom import AE, StoragePresentationContexts, _config
+
 
 LOG_FORMAT = ('%(levelname)s:%(asctime)s:%(message)s')
 logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
-
+_config.LOG_HANDLER_LEVEL = os.environ.get("PYNETDICOM_LOG_LEVEL")
 
 class GetJobThread(threading.Thread):
     def __init__(self,
                  uid: str,
                  fingerprint: Fingerprint,
                  cert_file: str,
-                 run_interval: int = 15,
-                 timeout: int = 3600,
+                 run_interval: int,
+                 timeout: int,
                  *args,
                  **kwargs):
         super().__init__(*args, **kwargs)
@@ -69,8 +68,6 @@ class GetJobThread(threading.Thread):
 
 
     def post_to_dicom_node(self, scu: SCU, dicom_dir):
-        #debug_logger()
-
         ae = AE()
         ae.requested_contexts = StoragePresentationContexts
 

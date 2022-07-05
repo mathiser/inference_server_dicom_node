@@ -5,15 +5,13 @@ import sys
 
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
-from pynetdicom import (
-    AE, evt, StoragePresentationContexts
-)
+from pynetdicom import AE, evt, StoragePresentationContexts, _config
 from models import Incoming
-
-#debug_logger()
 
 LOG_FORMAT = ('%(levelname)s:%(asctime)s:%(message)s')
 logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
+_config.LOG_HANDLER_LEVEL = os.environ.get("PYNETDICOM_LOG_LEVEL")
+
 
 class SCP:
     def __init__(self,
@@ -50,16 +48,22 @@ class SCP:
         # Add the File Meta Information
         ds.file_meta = event.file_meta
         pid = ds.PatientID
-        modality = ds.Modality.upper()
+        modality = ds.Modality
 
         try:
-            study_description = ds.StudyDescription.upper()
+            study_description = ds.StudyDescription
         except:
             study_description = "None"
 
-        logging.info(f"Received dicom: Study description: {study_description}, Modality: {modality}")
+        try:
+            series_description = ds.SeriesDescription
+        except:
+            series_description = "None"
 
-        path = os.path.join(self.storage_dir, pid, study_description, modality)
+        logging.info(f"Received dicom: Study description: {study_description}, Series description: {series_description},"
+                     f" Modality: {modality}")
+
+        path = os.path.join(self.storage_dir, pid, study_description, series_description, modality)
         # make dir for the incoming
         os.makedirs(path, exist_ok=True)
 
@@ -69,7 +73,8 @@ class SCP:
                                              first_timestamp=event.timestamp,
                                              PatientID=pid,
                                              Modality=modality,
-                                             StudyDescription=study_description)
+                                             StudyDescription=study_description,
+                                             SeriesDescription=series_description)
         else:
             self.queue_dict[path].last_timestamp = event.timestamp
 
@@ -83,15 +88,6 @@ class SCP:
         ae = AE(ae_title=self.ae_title)
         ae.requested_contexts = StoragePresentationContexts
 
-        # storage_sop_classes = [
-        #     cx.abstract_syntax for cx in AllStoragePresentationContexts
-        # ]
-        # for uid in storage_sop_classes:
-        #     ae_temp.add_supported_context(uid, ALL_TRANSFER_SYNTAXES)
-
-        # ae_temp.add_supported_context('1.2.840.10008.1.1', ALL_TRANSFER_SYNTAXES)  # Verification SOP Class
-        # ae_temp.add_supported_context('1.2.840.10008.3.1.1.1', ALL_TRANSFER_SYNTAXES)  # DICOM Application Context Name
-        # ae_temp.add_supported_context('1.2.840.10008.5.1.4.1.1.11.1', ALL_TRANSFER_SYNTAXES)  # Not sure
         return ae
 
     def run_scp(self):

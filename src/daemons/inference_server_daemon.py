@@ -25,9 +25,10 @@ class InferenceServerDaemon:
                  scp: SCP,
                  db: DB,
                  cert_file: str,
-                 run_interval: int = 1,
-                 send_after: int = 10,
-                 timeout: int = 86400,
+                 run_interval: int,
+                 send_after: int,
+                 timeout: int,
+                 delete_on_send: bool
                  ):
         self.scp = scp
         self.run_interval = run_interval
@@ -35,6 +36,7 @@ class InferenceServerDaemon:
         self.timeout = timeout
         self.threads = []
         self.db = db
+        self.delete_on_send = delete_on_send
         self.cert = cert_file
 
     def __del__(self):
@@ -75,8 +77,10 @@ class InferenceServerDaemon:
                                              timeout=self.timeout,
                                              cert_file=self.cert)
                             self.threads.append(t)
-                            to_remove.add(id)  # Pop from dict
                             t.start()
+
+                            if self.delete_on_send:
+                                to_remove.add(id)
                         else:
                             print(res)
                             logging.error(f"Unsuccessful post to {incoming.fingerprint.scu_ip}: {incoming.fingerprint.scu_port}, {incoming}")
