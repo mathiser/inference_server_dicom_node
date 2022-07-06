@@ -15,6 +15,7 @@ def main():
               port=int(os.environ.get("SCP_PORT")),
               ae_title=os.environ.get("SCP_AE_TITLE"),
               storage_dir=os.environ.get("INCOMING_DIR"),
+              delete_on_post=bool(os.environ.get("DELETE_ON_POST")),
               block=False)
     scp.run_scp()
 
@@ -22,10 +23,9 @@ def main():
     daemon = InferenceServerDaemon(scp=scp,
                                    db=db,
                                    cert_file=os.environ.get("CERT_FILE"),
-                                   timeout=int(os.environ.get("GET_TIMEOUT")),
-                                   run_interval=int(os.environ.get("RUN_INTERVAL")),
-                                   send_after=int(os.environ.get("SEND_AFTER")),
-                                   delete_on_send=bool(os.environ.get("DELETE_ON_SEND"))
+                                   post_timeout=int(os.environ.get("POST_TIMEOUT")),
+                                   post_interval=int(os.environ.get("POST_INTERVAL")),
+                                   post_after=int(os.environ.get("POST_AFTER")),
                                    )
     daemon.run()  # Blocks
 

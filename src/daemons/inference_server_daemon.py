@@ -25,18 +25,16 @@ class InferenceServerDaemon:
                  scp: SCP,
                  db: DB,
                  cert_file: str,
-                 run_interval: int,
-                 send_after: int,
-                 timeout: int,
-                 delete_on_send: bool
+                 post_interval: int,
+                 post_after: int,
+                 post_timeout: int,
                  ):
         self.scp = scp
-        self.run_interval = run_interval
-        self.send_after = send_after
-        self.timeout = timeout
+        self.post_interval = post_interval
+        self.post_after = post_after
+        self.post_timeout = post_timeout
         self.threads = []
         self.db = db
-        self.delete_on_send = delete_on_send
         self.cert = cert_file
 
     def __del__(self):
@@ -45,13 +43,13 @@ class InferenceServerDaemon:
 
     def run(self) -> None:
         while True:
-            time.sleep(self.run_interval)
+            time.sleep(self.post_interval)
             to_remove = set()
             for id, incoming in self.scp.get_queue_dict().items():
                 assert isinstance(incoming, Incoming)
 
                 if self.is_ready_to_post(incoming):
-                    logging.info(f"{str(incoming)} is untouched for {str(self.send_after)} seconds.")
+                    logging.info(f"{str(incoming)} is untouched for {str(self.post_after)} seconds.")
 
                     fingerprints = self.db.get_fingerprint_from_incoming(incoming)
                     logging.info(f"Found {str(len(fingerprints))} matching fingerprints for {str(incoming)}")
@@ -66,24 +64,23 @@ class InferenceServerDaemon:
                         logging.info(f"... on matching models for {str(incoming.path)}: {str([n for n in fingerprint])}")
                         res = self.post(incoming=incoming,
                                         fingerprint=fingerprint)
-                        logging.info(res)
-                        logging.info(str(res.content))
+                        logging.info(f"{str(res)}: {str(res.content)}")
                         if res.ok:
                             uid = json.loads(res.content)
                             logging.info(f"Successful post of {incoming}.")
                             logging.info(f"UID: {uid}")
                             t = GetJobThread(uid=uid,
                                              fingerprint=fingerprint,
-                                             timeout=self.timeout,
-                                             cert_file=self.cert)
+                                             cert_file=self.cert,
+                                             get_timeout=int(os.environ.get("GET_TIMEOUT")),
+                                             get_interval=int(os.environ.get("GET_INTERVAL")))
                             self.threads.append(t)
                             t.start()
 
-                            if self.delete_on_send:
-                                to_remove.add(id)
+                            to_remove.add(id)
                         else:
-                            print(res)
-                            logging.error(f"Unsuccessful post to {incoming.fingerprint.scu_ip}: {incoming.fingerprint.scu_port}, {incoming}")
+                            logging.error(f"{str(res)}: Unsuccessful post to {incoming.fingerprint.scu_ip}: "
+                                          f"{incoming.fingerprint.scu_port}, {incoming}")
 
             for id in to_remove:
                 self.scp.delete_id_in_queue_dict(id)
@@ -103,4 +100,4 @@ class InferenceServerDaemon:
             return res
 
     def is_ready_to_post(self, incoming: Incoming):
-        return (datetime.datetime.now() - incoming.last_timestamp) > datetime.timedelta(seconds=self.send_after)
+        return (datetime.datetime.now() - incoming.last_timestamp) > datetime.timedelta(seconds=self.post_after)

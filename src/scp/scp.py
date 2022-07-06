@@ -19,6 +19,7 @@ class SCP:
                  hostname: str,
                  port: int,
                  storage_dir: str,
+                 delete_on_post: bool,
                  block: bool = False):
 
         self.ae_title = ae_title
@@ -26,7 +27,7 @@ class SCP:
         self.port = port
         self.block = block
         self.storage_dir = storage_dir
-
+        self.delete_on_post = delete_on_post
         self.queue_dict = {}
 
     def get_queue_dict(self):
@@ -34,10 +35,14 @@ class SCP:
 
     def delete_id_in_queue_dict(self, id):
         try:
-            logging.info(f"[ ] Deleting {id}")
-            shutil.rmtree(self.queue_dict[id].path)
+            logging.info(f"Deleting {id} from incoming dict")
             del self.queue_dict[id]
-            logging.info(f"[X] Deleting {id}")
+
+            if self.delete_on_post:
+                logging.info(f"Deleting {id} from disk")
+                shutil.rmtree(self.queue_dict[id].path)
+
+
         except Exception as e:
             logging.error(e)
 
@@ -109,5 +114,5 @@ class SCP:
 
 
 if __name__ == "__main__":
-    scp = SCP(hostname="localhost", port=12999, ae_title="TestSCP", storage_dir="INCOMING", block=True)
+    scp = SCP(hostname="localhost", port=12999, ae_title="TestSCP", storage_dir="INCOMING", delete_on_post=True, block=True)
     scp.run_scp()

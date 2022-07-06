@@ -15,4 +15,4 @@ docker run \
   -e SCP_HOSTNAME=dcpt-frog2.onerm.dk \
   -e SCP_PORT=11113 \
   -e SCP_AE_TITLE=DL_pipe \
-  mathiser/inference_server_dicom_node:dev
+  mathiser/inference_server_dicom_node:v0.3
