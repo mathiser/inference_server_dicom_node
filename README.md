@@ -1,12 +1,12 @@
 # inference_server_dicom_node
-This InferenceServerDicomNode (IS-DN) is setup to to serve (InferenceServer)[https://github.com/mathiser/inference_server] through regular dicom networking protocols.
+This InferenceServerDicomNode (IS-DN) is setup to to serve [InferenceServer](https://github.com/mathiser/inference_server) through regular dicom networking protocols.
 The supported workflow is as follows:
 ## Flow through ISDN
 ### The Store SCP (`src/scp/scp.py`)
 - A SCP receives scans with regular dicom networking C_STORE events. 
-- Incoming dicom files are sorted out in a folder structure of `/patient_id/study_description/modality`
+- Incoming dicom files are sorted out in a folder structure of `/INCOMING/PatientID/StudyDescription/SeriesDescription/Modality`
 ### The InferenceServer post daemon (`src/daemons/inference_server_daemon.py`)
-- The post daemon runs with a fixed interval (default is 1 sec) and checks timestamp of all incoming folders (`/patient_id/study_description/modality`).
+- The post daemon runs with a fixed interval (default is 1 sec) and checks timestamp of all incoming folders (`/INCOMING/PatientID/StudyDescription/SeriesDescription/Modality`).
 - If a folder is untouched for a specified interval of time (default is 10 sec.), the folder checked via the DB for 
 matching fingerprints. A fingerprint is a specification file which contains information on which modalities and keywords
 in series descriptions that should trigger which model on which InferenceServer endpoint - and subsequently which dicom 
@@ -26,12 +26,27 @@ CONFIGURATION
   |-FINGERPRINTS
   |  |-fingerprint1.json
   |  |-fingerprint2.json
-  |-SCP
-  |  |-scp.json
 ```
 CONFIGURATION/CERTS/cert.crt is the public key to the TLS of InferenceServers. Multiple certs can be merged into this file.
 See CONFIGURATION/FINGERPRINTS/fingerprint.json.example for an example on how to configure a fingerprint
-See CONFIGURATION/SCP/scp.json.example for example on how to configure the SCP.
+
+Apart from this, you can set the following environment variables. Defaults shown here - just overwrite the variable
+when running the docker container  
+
+- SCP_HOSTNAME=localhost
+- SCP_PORT=104
+- SCP_AE_TITLE=DICOM_NODE
+- INCOMING_DIR=/INCOMING
+- FINGERPRINT_DIR=/CONFIGURATION/FINGERPRINTS
+- CERT_FILE=/CONFIGURATION/CERTS/cert.crt
+- PYNETDICOM_LOG_LEVEL=none ## other option is ["standard"](https://pydicom.github.io/pynetdicom/dev/reference/generated/pynetdicom._config.LOG_HANDLER_LEVEL.html#pynetdicom._config.LOG_HANDLER_LEVEL)
+- POST_INTERVAL=1
+- POST_AFTER=10
+- POST_TIMEOUT=60
+- DELETE_ON_POST=true
+- GET_INTERVAL=15
+- GET_TIMEOUT=86400
+
 
 ### Run in docker
 Assuming that the project is build (see /build.sh as example on howto), you can run IS-DN with 
@@ -72,4 +87,6 @@ docker run \
   --name dicom_node \
   mathiser/inference_server_dicom_node:some_other_tag
 ```
+
+### 
 

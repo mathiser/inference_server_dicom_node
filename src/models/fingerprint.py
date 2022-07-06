@@ -10,8 +10,9 @@ class SCU(BaseModel):
 
 
 class Fingerprint(BaseModel):
-    modality: str
-    study_description_keywords: List[str]
+    modality_regex: str
+    series_description_regex: str
+    study_description_regex: str
     inference_server_url: str
     model_human_readable_id: str
     scus: List[SCU]

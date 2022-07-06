@@ -1,6 +1,7 @@
 {
-  "modality": "MR",
-  "study_description_keywords": ["*"],
+  "modality_regex": "MR",
+  "series_description_regex": ".",
+  "study_description_regex": ".",
   "inference_server_url": "https://omen.onerm.dk/api/tasks/",
   "model_human_readable_id": "cns_t1_oars",
   "scus":[

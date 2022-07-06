@@ -5,15 +5,13 @@ import sys
 
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
-from pynetdicom import (
-    AE, evt, StoragePresentationContexts
-)
+from pynetdicom import AE, evt, StoragePresentationContexts, _config
 from models import Incoming
-
-#debug_logger()
 
 LOG_FORMAT = ('%(levelname)s:%(asctime)s:%(message)s')
 logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
+_config.LOG_HANDLER_LEVEL = os.environ.get("PYNETDICOM_LOG_LEVEL")
+
 
 class SCP:
     def __init__(self,
@@ -21,6 +19,7 @@ class SCP:
                  hostname: str,
                  port: int,
                  storage_dir: str,
+                 delete_on_post: bool,
                  block: bool = False):
 
         self.ae_title = ae_title
@@ -28,7 +27,7 @@ class SCP:
         self.port = port
         self.block = block
         self.storage_dir = storage_dir
-
+        self.delete_on_post = delete_on_post
         self.queue_dict = {}
 
     def get_queue_dict(self):
@@ -36,10 +35,14 @@ class SCP:
 
     def delete_id_in_queue_dict(self, id):
         try:
-            logging.info(f"[ ] Deleting {id}")
-            shutil.rmtree(self.queue_dict[id].path)
+            logging.info(f"Deleting {id} from incoming dict")
             del self.queue_dict[id]
-            logging.info(f"[X] Deleting {id}")
+
+            if self.delete_on_post:
+                logging.info(f"Deleting {id} from disk")
+                shutil.rmtree(self.queue_dict[id].path)
+
+
         except Exception as e:
             logging.error(e)
 
@@ -50,16 +53,22 @@ class SCP:
         # Add the File Meta Information
         ds.file_meta = event.file_meta
         pid = ds.PatientID
-        modality = ds.Modality.upper()
+        modality = ds.Modality
 
         try:
-            study_description = ds.StudyDescription.upper()
+            study_description = ds.StudyDescription
         except:
             study_description = "None"
 
-        logging.info(f"Received dicom: Study description: {study_description}, Modality: {modality}")
+        try:
+            series_description = ds.SeriesDescription
+        except:
+            series_description = "None"
 
-        path = os.path.join(self.storage_dir, pid, study_description, modality)
+        logging.info(f"Received dicom: Study description: {study_description}, Series description: {series_description},"
+                     f" Modality: {modality}")
+
+        path = os.path.join(self.storage_dir, pid, study_description, series_description, modality)
         # make dir for the incoming
         os.makedirs(path, exist_ok=True)
 
@@ -69,7 +78,8 @@ class SCP:
                                              first_timestamp=event.timestamp,
                                              PatientID=pid,
                                              Modality=modality,
-                                             StudyDescription=study_description)
+                                             StudyDescription=study_description,
+                                             SeriesDescription=series_description)
         else:
             self.queue_dict[path].last_timestamp = event.timestamp
 
@@ -81,17 +91,7 @@ class SCP:
 
     def create_accepting_ae(self):
         ae = AE(ae_title=self.ae_title)
-        ae.requested_contexts = StoragePresentationContexts
-
-        # storage_sop_classes = [
-        #     cx.abstract_syntax for cx in AllStoragePresentationContexts
-        # ]
-        # for uid in storage_sop_classes:
-        #     ae_temp.add_supported_context(uid, ALL_TRANSFER_SYNTAXES)
-
-        # ae_temp.add_supported_context('1.2.840.10008.1.1', ALL_TRANSFER_SYNTAXES)  # Verification SOP Class
-        # ae_temp.add_supported_context('1.2.840.10008.3.1.1.1', ALL_TRANSFER_SYNTAXES)  # DICOM Application Context Name
-        # ae_temp.add_supported_context('1.2.840.10008.5.1.4.1.1.11.1', ALL_TRANSFER_SYNTAXES)  # Not sure
+        ae.supported_contexts = StoragePresentationContexts
         return ae
 
     def run_scp(self):
@@ -114,5 +114,5 @@ class SCP:
 
 
 if __name__ == "__main__":
-    scp = SCP(hostname="localhost", port=12999, ae_title="TestSCP", storage_dir="INCOMING", block=True)
+    scp = SCP(hostname="localhost", port=12999, ae_title="TestSCP", storage_dir="INCOMING", delete_on_post=True, block=True)
     scp.run_scp()

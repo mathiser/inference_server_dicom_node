@@ -1,8 +1,10 @@
+import datetime
 import json
 import logging
 import os
 import tempfile
 from typing import List
+import re
 import sys
 
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
@@ -20,8 +22,9 @@ class DB:
                     try:
                         with open(file_path, "r") as r:
                             fp_dict = json.loads(r.read())
-                            fp = Fingerprint(modality=fp_dict["modality"],
-                                             study_description_keywords=fp_dict["study_description_keywords"],
+                            fp = Fingerprint(modality_regex=fp_dict["modality_regex"],
+                                             study_description_regex=fp_dict["study_description_regex"],
+                                             series_description_regex=fp_dict["series_description_regex"],
                                              inference_server_url=fp_dict["inference_server_url"],
                                              model_human_readable_id=fp_dict["model_human_readable_id"],
                                              scus=[SCU(**scu) for scu in fp_dict["scus"]])
@@ -41,18 +44,19 @@ class DB:
     def get_fingerprint_from_incoming(self, incoming: Incoming) -> List[Fingerprint]:
         to_return = []
         for fingerprint in self.fingerprints:
-            if fingerprint.modality == incoming.Modality or fingerprint.modality == "*":
-                for kw in fingerprint.study_description_keywords:
-                    if kw in incoming.StudyDescription or kw == "*":
-                        to_return.append(fingerprint)
-                        break  # Breaking keyword loop
+            modality_re = re.compile(r"{}".format(fingerprint.modality_regex), re.IGNORECASE)
+            series_re = re.compile(r"{}".format(fingerprint.series_description_regex), re.IGNORECASE)
+            study_re = re.compile(r"{}".format(fingerprint.study_description_regex), re.IGNORECASE)
+            if modality_re.search(incoming.Modality) and series_re.search(incoming.SeriesDescription) and study_re.search(incoming.StudyDescription):
+                to_return.append(fingerprint)
 
         return to_return
 
 if __name__ == "__main__":
     with tempfile.TemporaryDirectory() as d:
-        fp = {"modality": "MR",
-              "study_description_keywords": ["*"],
+        fp = {"modality_regex": "MR",
+              "study_description_regex": "HEST|Imp",
+              "series_description_regex": ".",
               "inference_server_url": "https://omen.onerm.dk/api/tasks/",
               "model_human_readable_id": "cns_t1_oars",
               "scus": [{"scu_ip": "127.0.0.1",
@@ -60,8 +64,18 @@ if __name__ == "__main__":
                    "scu_ae_title": "DICOM_ENDPOINT_AE"}
               ]}
 
-
         with open(os.path.join(d, "fingerprint.json"), "w") as f:
             f.write(json.dumps(fp))
         db = DB(d)
         print(db.get_fingerprints())
+
+        inc = Incoming(path="asdf",
+                 last_timestamp=datetime.datetime.now(),
+                 first_timestamp=datetime.datetime.now(),
+                 PatientID="123123123",
+                 StudyDescription="Neck Important neck",
+                 SeriesDescription="This is an important series to perform",
+                 Modality="MR")
+        fp = db.get_fingerprint_from_incoming(incoming=inc)
+        print(fp)
+        assert fp

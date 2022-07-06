@@ -8,4 +8,5 @@ class Incoming(BaseModel):
     first_timestamp: datetime.datetime
     PatientID: str
     StudyDescription: str
+    SeriesDescription: str
     Modality: str
