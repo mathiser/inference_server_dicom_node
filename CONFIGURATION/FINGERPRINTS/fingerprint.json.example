@@ -1,7 +1,9 @@
 {
-  "modality_regex": "MR",
-  "series_description_regex": ".",
-  "study_description_regex": ".",
+  "modality_regex": "", # Matches everything
+  "series_description_regex": "", # Matches everything
+  "study_description_regex": "", # Matches everything
+  "sop_class_uid_regex": "", # Matches everything
+  "exclude_regex": "a^", # Matches nothing
   "inference_server_url": "https://omen.onerm.dk/api/tasks/",
   "model_human_readable_id": "cns_t1_oars",
   "scus":[

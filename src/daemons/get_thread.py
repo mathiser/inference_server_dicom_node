@@ -11,10 +11,10 @@ from models import Fingerprint, SCU
 from pydicom import dcmread
 from pynetdicom import AE, StoragePresentationContexts, _config
 
-
 LOG_FORMAT = ('%(levelname)s:%(asctime)s:%(message)s')
 logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
 _config.LOG_HANDLER_LEVEL = os.environ.get("PYNETDICOM_LOG_LEVEL")
+
 
 class GetJobThread(threading.Thread):
     def __init__(self,
@@ -47,6 +47,15 @@ class GetJobThread(threading.Thread):
                         zip_file.extractall(tmp_dir)
                         for scu in self.fingerprint.scus:
                             self.post_to_dicom_node(dicom_dir=tmp_dir, scu=scu)
+
+                if os.environ.get("ASK_INFERENCE_SERVER_TO_DELETE_TASK"):
+                    logging.info(f"Asking {self.fingerprint.inference_server_url} to delete {self.uid}")
+                    res = requests.delete(url=urljoin(self.fingerprint.inference_server_url, self.uid),
+                                       verify=self.cert)
+                    if res.ok:
+                        logging.info(f"InferenceServer says that {self.uid} has successfully been deleted")
+                    else:
+                        logging.error(f"InferenceServer says that {self.uid} is NOT deleted - please report this to admin")
                 return
 
             elif res.status_code == 552:
@@ -57,7 +66,6 @@ class GetJobThread(threading.Thread):
                 logging.info(f"{str(res)}: Waited for response for {str(counter)} seconds on UID {self.uid}")
                 time.sleep(self.get_interval)
                 counter += self.get_interval
-
 
     def post_to_dicom_node(self, scu: SCU, dicom_dir):
         ae = AE()
@@ -77,7 +85,7 @@ class GetJobThread(threading.Thread):
                 if status:
                     pass
                     # If the storage request succeeded this will be 0x0000
-                    #logging.info('C-STORE request status: 0x{0:04x}'.format(status.Status))
+                    # logging.info('C-STORE request status: 0x{0:04x}'.format(status.Status))
                 else:
                     logging.info('Connection timed out, was aborted or received invalid response')
 

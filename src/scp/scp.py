@@ -70,7 +70,7 @@ class SCP:
         except:
             series_description = "None"
 
-        logging.info(f"Received dicom: Study description: {study_description}, Series description: {series_description},"
+        logging.info(f"Received: Study description: {study_description}, Series description: {series_description},"
                      f" Modality: {modality}, SOPClassUID: {sop_uid}")
 
         path = os.path.join(self.storage_dir, pid, study_description, series_description, modality, sop_uid)
@@ -107,7 +107,7 @@ class SCP:
 
         try:
             logging.info(
-                f"Starting SCP -- InferenceServerDicomNode: {self.hostname}:{str(self.port)}")
+                f"Starting SCP -- InferenceServerDicomNode: {self.hostname}:{str(self.port)} - {self.ae_title}")
 
             # Create and run
             ae = self.create_accepting_ae()
@@ -115,7 +115,7 @@ class SCP:
 
         except OSError as ose:
             logging.error(
-                f'Full error: \r\n{ose} \r\n\r\n Cannot start Association Entity servers. This is likely because the the program is already running, either through VSCode or a terminal. Close the program and try again.')
+                f'Full error: \r\n{ose} \r\n\r\n Cannot start Association Entity servers')
             raise ose
 
 

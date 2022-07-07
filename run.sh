@@ -9,4 +9,5 @@ docker run \
   -e SCP_HOSTNAME=localhost \
   -e SCP_PORT=11113 \
   -e SCP_AE_TITLE=DL_pipe \
-  mathiser/inference_server_dicom_node:dev
+  -e ASK_INFERENCE_SERVER_TO_DELETE_TASK="" \
+     mathiser/inference_server_dicom_node:dev

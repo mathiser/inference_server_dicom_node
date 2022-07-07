@@ -49,26 +49,26 @@ class InferenceServerDaemon:
                 assert isinstance(incoming, Incoming)
 
                 if self.is_ready_to_post(incoming):
-                    logging.info(f"{str(incoming)} is untouched for {str(self.post_after)} seconds.")
+                    logging.info(f"{str(incoming.path)} has been untouched for {str(self.post_after)} seconds.")
 
                     fingerprints = self.db.get_fingerprint_from_incoming(incoming)
-                    logging.info(f"Found {str(len(fingerprints))} matching fingerprints for {str(incoming)}")
+                    logging.info(f"Found {str(len(fingerprints))} matching fingerprints for {str(incoming.path)}")
 
                     if len(fingerprints) == 0:
-                        logging.info(f"Removing: {str(incoming)}")
+                        logging.info(f"Removing: {str(incoming.path)}")
                         to_remove.add(id)  # Pop from dict
                         continue
 
                     # Post for each model
                     for fingerprint in fingerprints:
-                        logging.info(f"... on matching models for {str(incoming.path)}: {str([n for n in fingerprint])}")
+                        logging.info(f"Shipping off {str(incoming.path)} to {fingerprint.inference_server_url} "
+                                     f"on model: {fingerprint.model_human_readable_id}")
                         res = self.post(incoming=incoming,
                                         fingerprint=fingerprint)
-                        logging.info(f"{str(res)}: {str(res.content)}")
+                        logging.info(f"{str(res)}: {str(res.content)} - {fingerprint.model_human_readable_id}")
                         if res.ok:
                             uid = json.loads(res.content)
-                            logging.info(f"Successful post of {incoming}.")
-                            logging.info(f"UID: {uid}")
+                            logging.info(f"Successful post of {incoming.path} with UID: {uid}")
                             t = GetJobThread(uid=uid,
                                              fingerprint=fingerprint,
                                              cert_file=self.cert,
