@@ -4,9 +4,9 @@ The supported workflow is as follows:
 ## Flow through ISDN
 ### The Store SCP (`src/scp/scp.py`)
 - A SCP receives scans with regular dicom networking C_STORE events. 
-- Incoming dicom files are sorted out in a folder structure of `/INCOMING/PatientID/StudyDescription/SeriesDescription/Modality`
+- Incoming dicom files are sorted out in a folder structure of `/INCOMING/PatientID/StudyDescription/SeriesDescription/Modality/SOPClassUID`
 ### The InferenceServer post daemon (`src/daemons/inference_server_daemon.py`)
-- The post daemon runs with a fixed interval (default is 1 sec) and checks timestamp of all incoming folders (`/INCOMING/PatientID/StudyDescription/SeriesDescription/Modality`).
+- The post daemon runs with a fixed interval (default is 1 sec) and checks timestamp of all incoming folders (`/INCOMING/PatientID/StudyDescription/SeriesDescription/Modality/SOPClassUID`).
 - If a folder is untouched for a specified interval of time (default is 10 sec.), the folder checked via the DB for 
 matching fingerprints. A fingerprint is a specification file which contains information on which modalities and keywords
 in series descriptions that should trigger which model on which InferenceServer endpoint - and subsequently which dicom 
