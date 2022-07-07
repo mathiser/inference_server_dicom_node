@@ -10,3 +10,4 @@ class Incoming(BaseModel):
     StudyDescription: str
     SeriesDescription: str
     Modality: str
+    SOPClassUID: str

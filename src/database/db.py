@@ -23,6 +23,7 @@ class DB:
                         with open(file_path, "r") as r:
                             fp_dict = json.loads(r.read())
                             fp = Fingerprint(modality_regex=fp_dict["modality_regex"],
+                                             sop_class_uid_regex=fp_dict["sop_class_uid_regex"],
                                              study_description_regex=fp_dict["study_description_regex"],
                                              series_description_regex=fp_dict["series_description_regex"],
                                              inference_server_url=fp_dict["inference_server_url"],
@@ -45,9 +46,11 @@ class DB:
         to_return = []
         for fingerprint in self.fingerprints:
             modality_re = re.compile(r"{}".format(fingerprint.modality_regex), re.IGNORECASE)
+            sop_class_uid_re = re.compile(r"{}".format(fingerprint.sop_class_uid_regex), re.IGNORECASE)
             series_re = re.compile(r"{}".format(fingerprint.series_description_regex), re.IGNORECASE)
             study_re = re.compile(r"{}".format(fingerprint.study_description_regex), re.IGNORECASE)
-            if modality_re.search(incoming.Modality) and series_re.search(incoming.SeriesDescription) and study_re.search(incoming.StudyDescription):
+            if modality_re.search(incoming.Modality) and series_re.search(incoming.SeriesDescription) and \
+                    study_re.search(incoming.StudyDescription) and sop_class_uid_re.search(incoming.SOPClassUID):
                 to_return.append(fingerprint)
 
         return to_return
@@ -55,8 +58,9 @@ class DB:
 if __name__ == "__main__":
     with tempfile.TemporaryDirectory() as d:
         fp = {"modality_regex": "MR",
+              "sop_class_uid_regex": "",
               "study_description_regex": "HEST|Imp",
-              "series_description_regex": ".",
+              "series_description_regex": "",
               "inference_server_url": "https://omen.onerm.dk/api/tasks/",
               "model_human_readable_id": "cns_t1_oars",
               "scus": [{"scu_ip": "127.0.0.1",
@@ -75,6 +79,7 @@ if __name__ == "__main__":
                  PatientID="123123123",
                  StudyDescription="Neck Important neck",
                  SeriesDescription="This is an important series to perform",
+                 SOPClassUID="1.2.840.10008.5.1.4.1.1.4",
                  Modality="MR")
         fp = db.get_fingerprint_from_incoming(incoming=inc)
         print(fp)

@@ -2,6 +2,7 @@ import logging
 import os
 import shutil
 import sys
+import traceback
 
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
@@ -35,15 +36,15 @@ class SCP:
 
     def delete_id_in_queue_dict(self, id):
         try:
+            if self.delete_on_post:
+                logging.info(f"Deleting {id}: {self.queue_dict[id].path} from disk")
+                shutil.rmtree(self.queue_dict[id].path)
+
             logging.info(f"Deleting {id} from incoming dict")
             del self.queue_dict[id]
 
-            if self.delete_on_post:
-                logging.info(f"Deleting {id} from disk")
-                shutil.rmtree(self.queue_dict[id].path)
-
-
         except Exception as e:
+            traceback.print_exc()
             logging.error(e)
 
     def handle_store(self, event):
@@ -54,6 +55,10 @@ class SCP:
         ds.file_meta = event.file_meta
         pid = ds.PatientID
         modality = ds.Modality
+        try:
+            sop_uid = ds.SOPClassUID
+        except:
+            sop_uid = "None"
 
         try:
             study_description = ds.StudyDescription
@@ -66,9 +71,9 @@ class SCP:
             series_description = "None"
 
         logging.info(f"Received dicom: Study description: {study_description}, Series description: {series_description},"
-                     f" Modality: {modality}")
+                     f" Modality: {modality}, SOPClassUID: {sop_uid}")
 
-        path = os.path.join(self.storage_dir, pid, study_description, series_description, modality)
+        path = os.path.join(self.storage_dir, pid, study_description, series_description, modality, sop_uid)
         # make dir for the incoming
         os.makedirs(path, exist_ok=True)
 
@@ -79,7 +84,8 @@ class SCP:
                                              PatientID=pid,
                                              Modality=modality,
                                              StudyDescription=study_description,
-                                             SeriesDescription=series_description)
+                                             SeriesDescription=series_description,
+                                             SOPClassUID=sop_uid)
         else:
             self.queue_dict[path].last_timestamp = event.timestamp
 
