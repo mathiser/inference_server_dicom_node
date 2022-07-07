@@ -11,6 +11,7 @@ class SCU(BaseModel):
 
 class Fingerprint(BaseModel):
     modality_regex: str
+    sop_class_uid_regex: str
     series_description_regex: str
     study_description_regex: str
     inference_server_url: str
