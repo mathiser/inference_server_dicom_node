@@ -37,7 +37,7 @@ class SCP:
     def delete_id_in_queue_dict(self, id):
         try:
             if self.delete_on_post:
-                logging.info(f"Deleting {id}: {self.queue_dict[id].path} from disk")
+                logging.info(f"Deleting {id} from disk")
                 shutil.rmtree(self.queue_dict[id].path)
 
             logging.info(f"Deleting {id} from incoming dict")

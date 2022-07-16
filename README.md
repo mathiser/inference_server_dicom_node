@@ -46,6 +46,8 @@ when running the docker container
 - DELETE_ON_POST=true
 - GET_INTERVAL=15
 - GET_TIMEOUT=86400
+- ASK_INFERENCE_SERVER_TO_DELETE_TASK=true # set to "" if you don't want to delete
+
 
 
 ### Run in docker
