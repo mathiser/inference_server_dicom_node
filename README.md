@@ -1,5 +1,5 @@
-# inference_server_dicom_node
-This InferenceServerDicomNode (IS-DN) is setup to to serve [InferenceServer](https://github.com/mathiser/inference_server) through regular dicom networking protocols.
+# InferenceServer Dicom Relay (ISDR)
+This InferenceServer Dicom Relay (ISDR) is setup to serve [InferenceServer](https://github.com/mathiser/inference_server) through regular dicom networking protocols.
 The supported workflow is as follows:
 ## Flow through ISDN
 ### The Store SCP (`src/scp/scp.py`)
@@ -19,7 +19,7 @@ This is a thread that is initialized when a job is posted with the post daemon.
 
 ## How-to's
 ### Set up configurations
-IS-DN is meant to run in a docker container. You must bind the following folder structure into the container:
+ISDR is meant to run in a docker container. You must bind the following folder structure into the container:
 ```
 CONFIGURATION
   |-CERTS/cert.crt
@@ -27,12 +27,13 @@ CONFIGURATION
   |  |-fingerprint1.json
   |  |-fingerprint2.json
 ```
-CONFIGURATION/CERTS/cert.crt is the public key to the TLS of InferenceServers. Multiple certs can be merged into this file.
-See CONFIGURATION/FINGERPRINTS/fingerprint.json.example for an example on how to configure a fingerprint
+`CONFIGURATION/CERTS/cert.crt` is the public key to the TLS of InferenceServers. Multiple certs can be merged into this file.
+See `CONFIGURATION/FINGERPRINTS/fingerprint.json.example` for an example on how to
+configure a fingerprint.
 
-Apart from this, you can set the following environment variables. Defaults shown here - just overwrite the variable
+You can set the following environment variables. Defaults shown here - just overwrite the variable
 when running the docker container  
-
+```
 - SCP_HOSTNAME=localhost
 - SCP_PORT=104
 - SCP_AE_TITLE=DICOM_NODE
@@ -47,11 +48,11 @@ when running the docker container
 - GET_INTERVAL=15
 - GET_TIMEOUT=86400
 - ASK_INFERENCE_SERVER_TO_DELETE_TASK=true # set to "" if you don't want to delete
-
+```
 
 
 ### Run in docker
-Assuming that the project is build (see /build.sh as example on howto), you can run IS-DN with 
+Assuming that the project is build (see /build.sh as example on howto), you can run ISDR with 
 ```shell
 docker run \
   -d \
@@ -62,21 +63,21 @@ docker run \
   --name dicom_node \
   mathiser/inference_server_dicom_node:v0.2.1
 ```
-... or you can adabt and run `run.sh.example`
+... or you can adapt and run `run.sh.example`
 
 ### Attach to the logs
 You can attach to the docker logs with:  
 `docker logs -f dicom_node`
 
-### Restart IS-DN
-Can you have updated something in CONFIGURATION, you need to restart IS-DN:  
+### Restart ISDR
+Can you have updated something in CONFIGURATION, you need to restart ISDR:  
 `docker restart dicom_node`
 
-### Hard restart IS-DN
+### Hard restart ISDR
 If everything is wrong or you want to upgrade to a newer version:  
 `docker stop dicom_node && docker rm dicom_node`
 
-### Update to another build of IS-DN
+### Update to another build of ISDR
 ```
 docker stop dicom_node && docker rm dicom_node
 docker pull mathiser/inference_server_dicom_node:some_other_tag
@@ -89,6 +90,3 @@ docker run \
   --name dicom_node \
   mathiser/inference_server_dicom_node:some_other_tag
 ```
-
-### 
-
