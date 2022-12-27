@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Union
 
 from pydantic import BaseModel
 
@@ -8,7 +8,6 @@ class SCU(BaseModel):
     scu_port: int
     scu_ae_title: str
 
-
 class Fingerprint(BaseModel):
     modality_regex: str = ""
     sop_class_uid_regex: str = ""
@@ -17,4 +16,4 @@ class Fingerprint(BaseModel):
     exclude_regex: str = "a^"
     inference_server_url: str
     model_human_readable_id: str
-    scus: List[SCU]
+    scus: Union[List[SCU], None] = None

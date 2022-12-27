@@ -9,7 +9,7 @@
   "scus":[
     {
       "scu_ip": "127.0.0.1",
-      "scu_port":  "11110",
+      "scu_port":  "11111",
       "scu_ae_title": "DICOM_ENDPOINT_AE"}
   ]
 }
