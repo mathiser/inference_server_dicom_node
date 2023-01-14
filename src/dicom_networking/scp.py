@@ -42,23 +42,25 @@ class SCP:
         study_description = ds.get("StudyDescription", "None")
         series_description = ds.get("SeriesDescription", "None")
 
-        logging.info(f"Received: SeriesInstanceUID: {series_instance_uid} Study description: {study_description}, Series description: {series_description},"
+        logging.info(f"Received: PatientID: {pid} SeriesInstanceUID: {series_instance_uid} Study description: {study_description}, Series description: {series_description},"
                      f" Modality: {modality}, SOPClassUID: {sop_uid}")
 
-        inc = self.db.upsert_incoming(timestamp=event.timestamp,
-                                      patient_id=pid,
-                                      series_instance_uid=series_instance_uid,
-                                      modality=modality,
-                                      study_description=study_description,
-                                      series_description=series_description,
-                                      sop_class_uid=sop_uid,
-                                      )
+        inc = self.db.burst_insert_incoming(timestamp=event.timestamp,
+                                            patient_id=pid,
+                                            series_instance_uid=series_instance_uid,
+                                            modality=modality,
+                                            study_description=study_description,
+                                            series_description=series_description,
+                                            sop_class_uid=sop_uid,
+                                            )
 
         # Save the dataset using the SOP Instance UID as the filename
         ds.save_as(os.path.join(inc.path, ds.SOPInstanceUID + ".dcm"), write_like_original=False)
 
         # Return a 'Success' status
         return 0x0000
+
+
     def create_accepting_ae(self):
         ae = AE(ae_title=self.ae_title)
         ae.supported_contexts = StoragePresentationContexts

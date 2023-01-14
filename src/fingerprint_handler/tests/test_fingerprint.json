@@ -1,0 +1,28 @@
+{"sub_fingerprints":
+  [
+    {
+      "zip_path": "CT",
+      "modality_regex": "",
+      "series_description_regex": "",
+      "study_description_regex": "",
+      "sop_class_uid_regex": "",
+      "exclude_regex": "a^"
+    },
+    {
+      "zip_path": "MRI",
+      "modality_regex": "",
+      "series_description_regex": "",
+      "study_description_regex": "",
+      "sop_class_uid_regex": "",
+      "exclude_regex": "a^"
+    }
+  ],
+  "inference_server_url": "http://localhost/api/tasks/",
+  "model_human_readable_id": "multimodal_test",
+  "scus":[
+    {
+      "scu_ip": "localhost",
+      "scu_port":  "1111",
+      "scu_ae_title": "DCM_ENDPOINT_AE"}
+  ]
+}
