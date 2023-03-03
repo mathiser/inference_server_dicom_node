@@ -1,4 +1,5 @@
 import datetime
+import secrets
 import tempfile
 
 from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey
@@ -34,7 +35,7 @@ class Incoming(Base):
     #                                     back_populates="incoming")
 
 
-class FingerprintMatch(Base):
+class Fingerprint(Base):
     # Fingerprint regex
     __tablename__ = "fingerprint_matches"
     id = Column(Integer, index=True, unique=True, primary_key=True, autoincrement=True)
@@ -44,13 +45,8 @@ class FingerprintMatch(Base):
     # Is the subpath in this the matching incoming will be put for the zip file to the inference server.
     zip_path = Column(String, default="/")
 
-    # Incoming
-    incoming_id = Column(Integer, ForeignKey("incomings.id"))
-    incoming = relationship("Incoming", lazy="select", uselist=False)
-
-    # Task details
-    task_id = Column(Integer, ForeignKey("tasks.id"))
-    task = relationship("Task", lazy="joined", uselist=False, back_populates="fingerprint_matches")
+    # <./rand_string>
+    file_path = Column(String, secrets.token_urlsafe)
 
     # Fingerprint regex
     modality_exp = Column(String, default="")

@@ -60,6 +60,8 @@ class SCP:
         # Return a 'Success' status
         return 0x0000
 
+    def trigger_fingerprinting(self):
+        self.db.run_subfingerprinting()
 
     def create_accepting_ae(self):
         ae = AE(ae_title=self.ae_title)
@@ -72,7 +74,8 @@ class SCP:
 
     def run_scp(self, blocking=True):
         handler = [
-            (evt.EVT_C_STORE, self.handle_store)
+            (evt.EVT_C_STORE, self.handle_store),
+            (evt.EVT_RELEASED, self.trigger_fingerprinting)
         ]
 
         try:
