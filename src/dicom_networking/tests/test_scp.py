@@ -1,50 +1,56 @@
 import os.path
 import shutil
 import tempfile
-import time
 import unittest
+import zipfile
+from io import BytesIO
+from multiprocessing.pool import ThreadPool
 
-from database.db import DB
+import requests
+
 from dicom_networking.scp import SCP
 from dicom_networking.scu import post_folder_to_dicom_node
-from models.models import Base, Destination
+
+
+def get_test_dicom(path):
+    res = requests.get("https://xnat.bmia.nl/REST/projects/stwstrategyhn1/subjects/BMIAXNAT_S09203/experiments/BMIAXNAT_E62311/scans/1_3_6_1_4_1_40744_29_33371661027192187491509798061184654147/files?format=zip", stream=True)
+    res_io = BytesIO(res.content)
+    zf = zipfile.ZipFile(file=res_io)
+    zf.extractall(path)
+    return path
 
 class TestSCP(unittest.TestCase):
     def setUp(self) -> None:
+        self.test_case_dir = "/tmp/test_images/"
+        if not os.path.isdir(self.test_case_dir):
+            get_test_dicom(self.test_case_dir)
         self.tmp_dir = tempfile.mkdtemp()
-        self.db_dir = tempfile.mkdtemp()
-        self.test_case_dir = "dicom_networking/tests/test_image"
-        self.db = DB(data_dir=self.db_dir, declarative_base=Base)
+
         self.scp = SCP(ae_title="DCM_ENDPOINT_AE",
                        ip="localhost",
                        port=11110,
-                       storage_dir=self.tmp_dir,
-                       db=self.db)
+                       storage_dir=self.tmp_dir)
+
         self.scp.run_scp(blocking=False)
 
     def tearDown(self) -> None:
         shutil.rmtree(self.tmp_dir)
-        shutil.rmtree(self.db_dir)
-        self.scp.shutdown_ae()
         del self.scp
-    def test_scp_and_post_to_dicom_node(self):
-        self.assertEqual(len(self.db.get_incomings()), 0)
-        dest = Destination(task_id=-1, scu_port=self.scp.port, scu_ae_title=self.scp.ae_title, scu_ip=self.scp.ip)
-        self.assertTrue(os.path.exists(self.test_case_dir))
-        self.assertTrue(post_folder_to_dicom_node(destination=dest, dicom_dir=self.test_case_dir))
-        incs = self.db.get_incomings()
-        self.assertEqual(2, len(incs))
-        self.assertFalse(incs[0].is_idle)
-        self.assertNotEqual(incs[0].path, incs[1].path)
 
-    def test_multiple_posts_yield_same_cases(self):
-        self.assertEqual(len(self.db.get_incomings()), 0)
-        dest = Destination(task_id=-1, scu_port=self.scp.port, scu_ae_title=self.scp.ae_title, scu_ip=self.scp.ip)
-        self.assertTrue(post_folder_to_dicom_node(destination=dest, dicom_dir=self.test_case_dir))
-        time.sleep(1)
-        self.assertTrue(post_folder_to_dicom_node(destination=dest, dicom_dir=self.test_case_dir))
-        time.sleep(1)
-        self.assertTrue(post_folder_to_dicom_node(destination=dest, dicom_dir=self.test_case_dir))
+    def test_scp_and_post_to_dicom_node(self):
+        self.assertTrue(os.path.exists(self.test_case_dir))
+        self.assertTrue(post_folder_to_dicom_node(scu_ip=self.scp.ip, scu_port=self.scp.port, scu_ae_title=self.scp.ae_title, dicom_dir=self.test_case_dir))
+
+    def test_scp_and_post_multiple_simultaneous_to_dicom_node(self):
+        self.assertTrue(os.path.exists(self.test_case_dir))
+        args = [(i, self.scp.ip, self.scp.port, self.scp.ae_title, self.test_case_dir) for i in range(4)]
+        def post(i, scu_ip,scu_port, scu_ae_title, dicom_dir):
+            self.assertTrue(post_folder_to_dicom_node(scu_ip=scu_ip, scu_port=scu_port, scu_ae_title=scu_ae_title, dicom_dir=dicom_dir))
+
+        t = ThreadPool(4)
+        t.starmap(post, args)
+        t.close()
+        t.join()
 
 if __name__ == '__main__':
     unittest.main()

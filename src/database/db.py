@@ -6,7 +6,7 @@ from typing import Union
 import sqlalchemy
 from sqlalchemy.orm import sessionmaker, scoped_session
 
-from models.models import Incoming, Task, InferenceServerResponse, Destination, FingerprintMatch, InferenceServerTask, \
+from models.models import Incoming, Task, InferenceServerResponse, Destination, InferenceServerTask, \
     TaskStatus
 
 
@@ -164,7 +164,7 @@ class DB:
                     status: Union[int, None] = None):
         if status:
             self.add_task_status(task_id=task_id, status=status)
-if
+
         if is_deleted:
             with self.Session() as session:
                 t = session.query(Task).filter_by(id=task_id).first()

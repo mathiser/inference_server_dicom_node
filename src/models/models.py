@@ -46,7 +46,7 @@ class Fingerprint(Base):
     zip_path = Column(String, default="/")
 
     # <./rand_string>
-    file_path = Column(String, secrets.token_urlsafe)
+    file_path = Column(String, default=secrets.token_urlsafe)
 
     # Fingerprint regex
     modality_exp = Column(String, default="")

@@ -1,11 +1,32 @@
+import datetime
 import logging
 import os
+import queue
+import secrets
+from queue import Queue
+from typing import Dict
 
+import pydantic
 from pynetdicom import AE, evt, StoragePresentationContexts, _config
 
-from database.db import DB
-
 LOG_FORMAT = ('%(levelname)s:%(asctime)s:%(message)s')
+
+
+class SeriesInstance(pydantic.BaseModel):
+    series_instance_uid: str
+    modality: str
+    study_description: str
+    series_description: str
+    sop_class_uid: str
+    path: str
+
+
+class Incoming(pydantic.BaseModel):
+    assoc_id: str
+    timestamp: datetime.datetime
+    patient_id: str
+    path: str
+    series_instances: Dict[str, SeriesInstance]
 
 
 class SCP:
@@ -14,68 +35,91 @@ class SCP:
                  ip: str,
                  port: int,
                  storage_dir: str,
-                 db: DB,
                  log_level=10,
                  pynetdicom_log_level="",
                  ):
-        self.db = db
-        self.ae_title = ae_title
-        self.ip = ip
-        self.port = port
-        self.storage_dir = storage_dir
 
         logging.basicConfig(level=log_level, format=LOG_FORMAT)
         _config.LOG_HANDLER_LEVEL = pynetdicom_log_level
 
+        self.ae_title = ae_title
+        self.ip = ip
+        self.port = port
+        self.storage_dir = storage_dir
+        self.ae = None
+
+        self.established_assoc_objs = {}  # Is set on establish (can only work if the SCP is single processed and concurrent)
+        self.released_assoc_objs = queue.Queue()
+
     def __del__(self):
-        self.shutdown_ae()
+        if self.ae:
+            self.ae.shutdown()
+
+    def update_assoc_obj(self, event, patient_id, series_instance_uid, modality, study_description, series_description,
+                         sop_class_uid):
+
+        # Thread id of incoming
+        assoc_id = event.assoc.native_id
+
+        # If top level assoc obj does not exist, create it
+        if assoc_id not in self.established_assoc_objs.keys():
+            self.established_assoc_objs[assoc_id] = Incoming(assoc_id=assoc_id,
+                                                             timestamp=datetime.datetime.now(),
+                                                             patient_id=patient_id,
+                                                             series_instances={},
+                                                             path=os.path.join(self.storage_dir, str(assoc_id)))
+
+        ## If not SeriesInstance exist in self.assoc_obj.series_instances.keys()
+        if series_instance_uid not in self.established_assoc_objs[assoc_id].series_instances.keys():
+            self.established_assoc_objs[assoc_id].series_instances[series_instance_uid] = SeriesInstance(
+                series_instance_uid=series_instance_uid,
+                modality=modality,
+                study_description=study_description,
+                series_description=series_description,
+                sop_class_uid=sop_class_uid,
+                path=os.path.join(self.established_assoc_objs[assoc_id].path, sop_class_uid, series_instance_uid)
+            )
+        return self.established_assoc_objs[assoc_id]
+
     def handle_store(self, event):
         """Handle EVT_C_STORE events."""
+        assoc_id = event.assoc.native_id
+        # Get data set from event
         ds = event.dataset
 
         # Add the File Meta Information
         ds.file_meta = event.file_meta
-        pid = ds.get("PatientID", "None")
         series_instance_uid = ds.get("SeriesInstanceUID", "None")
-        modality = ds.get("Modality", "None")
-        sop_uid = ds.get("SOPClassUID", "None")
-        study_description = ds.get("StudyDescription", "None")
-        series_description = ds.get("SeriesDescription", "None")
-
-        logging.info(f"Received: PatientID: {pid} SeriesInstanceUID: {series_instance_uid} Study description: {study_description}, Series description: {series_description},"
-                     f" Modality: {modality}, SOPClassUID: {sop_uid}")
-
-        inc = self.db.burst_insert_incoming(timestamp=event.timestamp,
-                                            patient_id=pid,
-                                            series_instance_uid=series_instance_uid,
-                                            modality=modality,
-                                            study_description=study_description,
-                                            series_description=series_description,
-                                            sop_class_uid=sop_uid,
-                                            )
+        self.update_assoc_obj(event=event,
+                              patient_id=ds.get("PatientID", "None"),
+                              series_instance_uid=series_instance_uid,
+                              modality=ds.get("Modality", "None"),
+                              study_description=ds.get("StudyDescription", "None"),
+                              series_description=ds.get("SeriesDescription", "None"),
+                              sop_class_uid=ds.get("SOPClassUID", "None")
+                              )
 
         # Save the dataset using the SOP Instance UID as the filename
-        ds.save_as(os.path.join(inc.path, ds.SOPInstanceUID + ".dcm"), write_like_original=False)
+        series_instance_folder = os.path.join(self.established_assoc_objs[assoc_id].series_instances[series_instance_uid].path)
+        os.makedirs(series_instance_folder, exist_ok=True)
+        ds.save_as(os.path.join(series_instance_folder, ds.SOPInstanceUID + ".dcm"), write_like_original=False)
 
         # Return a 'Success' status
         return 0x0000
 
-    def trigger_fingerprinting(self):
-        self.db.run_subfingerprinting()
+    def handle_release(self, event):
+        self.released_assoc_objs.put(self.established_assoc_objs[event.assoc.native_id])
+        del self.established_assoc_objs[event.assoc.native_id]
 
     def create_accepting_ae(self):
-        ae = AE(ae_title=self.ae_title)
-        ae.supported_contexts = StoragePresentationContexts
-        return ae
-
-    def shutdown_ae(self):
-        assert self.ae
-        self.ae.shutdown()
+        self.ae = AE(ae_title=self.ae_title)
+        self.ae.supported_contexts = StoragePresentationContexts
+        return self.ae
 
     def run_scp(self, blocking=True):
         handler = [
             (evt.EVT_C_STORE, self.handle_store),
-            (evt.EVT_RELEASED, self.trigger_fingerprinting)
+            (evt.EVT_RELEASED, self.handle_release)
         ]
 
         try:
@@ -90,3 +134,12 @@ class SCP:
             logging.error(
                 f'Full error: \r\n{ose} \r\n\r\n Cannot start Association Entity servers')
             raise ose
+
+
+if __name__ == "__main__":
+    scp = SCP(ae_title="test_scp",
+              ip="localhost",
+              port=10004,
+              storage_dir="test_dir",
+              pynetdicom_log_level="debug")
+    scp.run_scp(blocking=True)
