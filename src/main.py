@@ -1,10 +1,10 @@
 import os
 
-from fingerprint_handler.fingerprint_handler import FingerprintHandler
+from fingerprint_database.fingerprint_database import FingerprintDatabase
 from dicom_networking.scp import SCP
 from database.db import DB
-from database.db_daemon import DBDaemon
-from models.models import Base
+from database_daemon.db_daemon import DBDaemon
+from database.models import Base
 
 def main():
     db = DB(data_dir=os.environ.get("DATA_DIR"),
@@ -20,7 +20,7 @@ def main():
 
     scp.run_scp(blocking=False)
 
-    fp = FingerprintHandler(fingerprint_dir=os.environ.get("FINGERPRINT_DIR"))
+    fp = FingerprintDatabase(fingerprint_dir=os.environ.get("FINGERPRINT_DIR"))
     daemon = DBDaemon(db=db,
                       cert_file=os.environ.get("CERT_FILE"),
                       post_timeout_secs=int(os.environ.get("POST_TIMEOUT_SECS")),

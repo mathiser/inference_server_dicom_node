@@ -21,10 +21,10 @@ def get_test_dicom(path):
 
 class TestSCP(unittest.TestCase):
     def setUp(self) -> None:
-        self.test_case_dir = "/tmp/test_images/"
+        self.test_case_dir = ".tmp/test_images/"
         if not os.path.isdir(self.test_case_dir):
             get_test_dicom(self.test_case_dir)
-        self.tmp_dir = tempfile.mkdtemp()
+        self.tmp_dir = tempfile.mkdtemp(dir=".tmp/")
 
         self.scp = SCP(ae_title="DCM_ENDPOINT_AE",
                        ip="localhost",
@@ -35,6 +35,7 @@ class TestSCP(unittest.TestCase):
 
     def tearDown(self) -> None:
         shutil.rmtree(self.tmp_dir)
+        self.scp.ae.shutdown()
         del self.scp
 
     def test_scp_and_post_to_dicom_node(self):

@@ -2,8 +2,6 @@ import datetime
 import logging
 import os
 import queue
-import secrets
-from queue import Queue
 from typing import Dict
 
 import pydantic
@@ -48,12 +46,15 @@ class SCP:
         self.storage_dir = storage_dir
         self.ae = None
 
-        self.established_assoc_objs = {}  # Is set on establish (can only work if the SCP is single processed and concurrent)
-        self.released_assoc_objs = queue.Queue()
+        self.established_assoc_objs = {}  # container for finished associations
+        self.released_assoc_objs = queue.Queue()  # container for finished associations. Should be reached through self.get_incoming()
 
     def __del__(self):
         if self.ae:
             self.ae.shutdown()
+
+    def get_incoming(self, timeout=5):
+        return self.released_assoc_objs.get(timeout=timeout)
 
     def update_assoc_obj(self, event, patient_id, series_instance_uid, modality, study_description, series_description,
                          sop_class_uid):

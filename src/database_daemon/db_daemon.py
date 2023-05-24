@@ -10,7 +10,7 @@ from io import BytesIO
 
 from client.client import Client
 from database.db import DB
-from fingerprint_handler.fingerprint_handler import FingerprintHandler
+from fingerprint_database.fingerprint_database import FingerprintDatabase
 from dicom_networking import scu
 
 LOG_FORMAT = ('%(levelname)s:%(asctime)s:%(message)s')
@@ -21,7 +21,7 @@ class DBDaemon:
     def __init__(self,
                  client,
                  db: DB,
-                 fp: FingerprintHandler,
+                 fp: FingerprintDatabase,
                  daemon_run_interval_secs: int,
                  task_expire_after_secs: int,
                  incoming_idle_after_secs: int,

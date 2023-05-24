@@ -2,11 +2,10 @@ import time
 import unittest
 
 from client.mock_client import MockClient
-from database.db_daemon import DBDaemon
+from database_daemon.db_daemon import DBDaemon
 from database.tests.test_db import TestDB
-from dicom_networking.scp import SCP
 from dicom_networking.tests.test_scp import TestSCP
-from fingerprint_handler.tests.test_fingerprint_handler import TestFingerprintHandler
+from fingerprint_database.tests.test_fingerprint_handler import TestFingerprintHandler
 
 
 class TestDBDaemon(unittest.TestCase):

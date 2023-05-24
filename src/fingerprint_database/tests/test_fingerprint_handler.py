@@ -4,13 +4,13 @@ import shutil
 import tempfile
 import unittest
 
-from fingerprint_handler.fingerprint_handler import FingerprintHandler
+from fingerprint_database.fingerprint_database import FingerprintDatabase
 
 
 class TestFingerprintHandler(unittest.TestCase):
     def setUp(self):
         self.tmp_dir = tempfile.mkdtemp()
-        self.fp_handler = FingerprintHandler(fingerprint_dir=self.tmp_dir)
+        self.fp_handler = FingerprintDatabase(fingerprint_dir=self.tmp_dir)
 
     def tearDown(self) -> None:
         shutil.rmtree(self.tmp_dir)
