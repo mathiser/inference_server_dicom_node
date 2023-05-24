@@ -1,14 +1,7 @@
 import json
-import os
-import os
-import random
 import secrets
 import shutil
-import tempfile
-import zipfile
-from io import BytesIO
-from typing import Union, BinaryIO
-from urllib.parse import urljoin
+from typing import Union
 
 import requests
 
@@ -38,12 +31,10 @@ class MockClient:
             res._content = json.dumps('There is a little black spot on the sun to day')
         else:
             try:
-                t = self.tasks[task.inference_server_response.uid]
+                t = self.tasks[task.inference_server_uid]
                 res.status_code = 200
-                shutil.make_archive("tmp", "zip", root_dir="dicom_networking/tests/test_image/case2a/")
-                with open("tmp.zip", "br") as r:
+                with open(t.zip_path, "br") as r:
                     res._content = r.read()
-                shutil.rmtree("tmp.zip")
 
             except Exception as e:
                 res.status_code = 554
@@ -53,7 +44,7 @@ class MockClient:
 
     def delete_task(self, task) -> requests.Response:
         try:
-            del self.tasks[task.inference_server_response.uid]
+            del self.tasks[task.inference_server_uid]
             res = requests.Response()
             res.status_code = 200
             res._content = json.dumps('Task successfully deleted')

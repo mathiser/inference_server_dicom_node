@@ -14,9 +14,11 @@ class Trigger(Base):
     fingerprint_id = Column(Integer, ForeignKey("fingerprints.id"))
 
     # Regex matches
-    study_description_regex = Column(String)
-    series_description_regex = Column(String)
-    sop_class_uid_regex = Column(String)
+    study_description_pattern = Column(String, nullable=True)
+    series_description_pattern = Column(String, nullable=True)
+    sop_class_uid_exact = Column(String, nullable=True)
+    exclude_pattern = Column(String, nullable=True)
+
 class Destination(Base):
     __tablename__ = "destinations"
     id = Column(Integer, unique=True, primary_key=True, autoincrement=True)
@@ -47,18 +49,7 @@ class Fingerprint(Base):
     destinations = relationship("Destination", lazy="joined")
 
 
-########## Relates to incomings ##########
-class Incoming(Base):
-    __tablename__ = "incomings"
-    id = Column(Integer, index=True, unique=True, primary_key=True, autoincrement=True)
-    timestamp = Column(DateTime, default=datetime.datetime.now)
-
-    # Patient infomation
-    patient_id = Column(String)
-
-    # zipped on pull from SCP. Ready to post.
-    zip_path = Column(String)
-
+########## Tasks ##########
 class Task(Base):
     __tablename__ = "tasks"
     id = Column(Integer, index=True, unique=True, primary_key=True, autoincrement=True)
@@ -67,14 +58,15 @@ class Task(Base):
     fingerprint_id = Column(Integer, ForeignKey("fingerprints.id"))
     fingerprint = relationship("Fingerprint", lazy="joined", uselist=False)
 
-    incoming_id = Column(Integer, ForeignKey("incomings.id"))
-    incoming = relationship("Incoming", lazy=True)
+    # zipped on pull from SCP. Ready to post.
+    zip_path = Column(String)
 
     # Status stamp
     status = Column(Integer, default=0)
 
     # Inference server uid
     inference_server_uid = Column(String, nullable=True, default=None)
+    inference_server_zip = Column(String, nullable=True, default=None)
 
     # Toggles check for final deletes
     deleted_local = Column(Boolean, default=False)

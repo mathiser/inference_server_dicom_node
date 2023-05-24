@@ -5,7 +5,7 @@ import tempfile
 import unittest
 
 from database.db import DB
-from database.models import Fingerprint, Trigger, Destination, InferenceServer, Incoming
+from database.models import Fingerprint, Trigger, Destination, InferenceServer
 
 
 class TestDB(unittest.TestCase):
@@ -26,14 +26,14 @@ class TestDB(unittest.TestCase):
     def test_add_trigger(self):
         fp = self.db.add_fingerprint()
 
-        study_description_regex = "1.2.3.4.5.6.7.8.9"
-        series_description_regex = "Some test series"
-        sop_class_uid_regex = "1.12.123.1234.12345"
+        study_description_pattern = "1.2.3.4.5.6.7.8.9"
+        series_description_pattern = "Some test series"
+        sop_class_uid_exact = "1.12.123.1234.12345"
 
         trigger = self.db.add_trigger(fingerprint_id=fp.id,
-                                      sop_class_uid_regex=sop_class_uid_regex,
-                                      study_description_regex=study_description_regex,
-                                      series_description_regex=series_description_regex)
+                                      sop_class_uid_exact=sop_class_uid_exact,
+                                      study_description_pattern=study_description_pattern,
+                                      series_description_pattern=series_description_pattern)
 
         self.assertIsInstance(trigger, Trigger)
         fp = self.db.get_fingerprint(fp.id)
@@ -57,26 +57,17 @@ class TestDB(unittest.TestCase):
                                                         model_human_readable_id="Some Model",
                                                         inference_server_url="https://zip-it.com.org")
         fp = self.db.get_fingerprint(fp.id)
+        self.assertIsInstance(inference_server, InferenceServer)
+
         self.assertEqual(inference_server.id, fp.inference_server.id)
-
-    def test_add_incoming(self):
-        incoming = self.db.add_incoming("123", "/some/path")
-        self.assertIsInstance(incoming, Incoming)
-        echo_incoming = self.db.get_incoming(incoming.id)
-        self.assertEqual(incoming.zip_path, echo_incoming.zip_path)
-
-    def test_get_incomings(self):
-        incs = [self.db.add_incoming(str(n), str(n)) for n in range(10)]
-        echo_incs = self.db.get_incomings()
-        self.assertEqual(len(incs), echo_incs.count())
 
     def test_add_task(self):
         fp = self.db.add_fingerprint()
 
         trigger = self.db.add_trigger(fingerprint_id=fp.id,
-                                      sop_class_uid_regex="1.2.3.4.5.6.7.8.9",
-                                      study_description_regex="Some test series",
-                                      series_description_regex="1.12.123.1234.12345")
+                                      sop_class_uid_exact="1.2.3.4.5.6.7.8.9",
+                                      study_description_pattern="Some test series",
+                                      series_description_pattern="1.12.123.1234.12345")
 
         destination = self.db.add_destination(fp.id,
                                               scu_ip="10.10.10.10",
@@ -87,9 +78,7 @@ class TestDB(unittest.TestCase):
                                                         model_human_readable_id="Some Model",
                                                         inference_server_url="https://zip-it.com.org")
 
-        incoming = self.db.add_incoming("123", "/some/path")
-        task = self.db.add_task(fp.id, incoming.id)
-        self.assertEqual(incoming.id, task.incoming_id)
+        task = self.db.add_task(fp.id, "some/path/to/input.zip")
         self.assertEqual(fp.id, task.fingerprint_id)
 
         self.assertEqual(trigger.id, task.fingerprint.triggers[0].id)
@@ -99,9 +88,9 @@ class TestDB(unittest.TestCase):
         fp = self.db.add_fingerprint()
 
         trigger = self.db.add_trigger(fingerprint_id=fp.id,
-                                      sop_class_uid_regex="1.2.3.4.5.6.7.8.9",
-                                      study_description_regex="Some test series",
-                                      series_description_regex="1.12.123.1234.12345")
+                                      sop_class_uid_exact="1.2.3.4.5.6.7.8.9",
+                                      study_description_pattern="Some test series",
+                                      series_description_pattern="1.12.123.1234.12345")
 
         destination = self.db.add_destination(fp.id,
                                               scu_ip="10.10.10.10",
@@ -112,8 +101,7 @@ class TestDB(unittest.TestCase):
                                                         model_human_readable_id="Some Model",
                                                         inference_server_url="https://zip-it.com.org")
 
-        incoming = self.db.add_incoming("123", "/some/path")
-        task = self.db.add_task(fp.id, incoming.id)
+        task = self.db.add_task(fp.id, "some/path/to/input.zip")
         self.assertFalse(task.deleted_remote)
         self.assertFalse(task.deleted_local)
         self.assertIsNone(task.inference_server_uid)

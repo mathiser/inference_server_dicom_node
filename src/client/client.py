@@ -10,17 +10,12 @@ import requests
 class Client:
     def __init__(self, cert: Union[str, bool] = True):
         self.cert = cert
-    def post_task(self, task) -> requests.Response:
-        with tempfile.TemporaryFile() as tmp_file:
-            with zipfile.ZipFile(tmp_file, "w") as zip_file:
-                for fol, subs, files in os.walk(task.incoming.path):
-                    for f in files:
-                        zip_file.write(os.path.join(fol, f), arcname=f)
-            tmp_file.seek(0)
 
+    def post_task(self, task) -> requests.Response:
+        with open(task.zip_path, "br") as zip_file:
             res = requests.post(url=task.inference_server_url,
                                 params={"model_human_readable_id": task.model_human_readable_id},
-                                files={"zip_file": tmp_file},
+                                files={"zip_file": zip_file},
                                 verify=self.cert)
             return res
 

@@ -44,8 +44,9 @@ class TestSCP(unittest.TestCase):
 
     def test_scp_and_post_multiple_simultaneous_to_dicom_node(self):
         self.assertTrue(os.path.exists(self.test_case_dir))
-        args = [(i, self.scp.ip, self.scp.port, self.scp.ae_title, self.test_case_dir) for i in range(4)]
-        def post(i, scu_ip,scu_port, scu_ae_title, dicom_dir):
+        args = [(self.scp.ip, self.scp.port, self.scp.ae_title, self.test_case_dir) for i in range(4)]
+
+        def post(scu_ip, scu_port, scu_ae_title, dicom_dir):
             self.assertTrue(post_folder_to_dicom_node(scu_ip=scu_ip, scu_port=scu_port, scu_ae_title=scu_ae_title, dicom_dir=dicom_dir))
 
         t = ThreadPool(4)

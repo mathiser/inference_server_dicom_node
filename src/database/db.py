@@ -5,25 +5,35 @@ from typing import Union
 import sqlalchemy
 from sqlalchemy.orm import sessionmaker, scoped_session, Query
 
-from database.models import Incoming, Destination, Fingerprint, Trigger, InferenceServer, Task
+from database.models import Destination, Fingerprint, Trigger, InferenceServer, Task
 from database.models import Base
 
 
 class DB:
-    def __init__(self, data_dir):
-        self.data_dir = data_dir
+    def __init__(self, base_dir):
+        self.base_dir = base_dir
+        self.data_dir = os.path.join(self.base_dir, "data")
+        self.db_dir = os.path.join(self.base_dir, "db")
 
-        self.database_path = f'{self.data_dir}/database.db'
+        os.makedirs(self.base_dir, exist_ok=True)
+        os.makedirs(self.data_dir, exist_ok=True)
+        os.makedirs(self.db_dir, exist_ok=True)
+
+        self.database_path = f'{self.db_dir}/database.db'
         self.database_url = f'sqlite:///{self.database_path}'
 
         self.engine = sqlalchemy.create_engine(self.database_url, future=True)
 
         # Check if database exists - if not, create scheme
-        if not os.path.exists(self.database_path):
+        if not os.path.isfile(self.database_path):
             Base.metadata.create_all(self.engine)
 
         self.session_maker = sessionmaker(bind=self.engine, expire_on_commit=False)
         self.Session = scoped_session(self.session_maker)
+    def generate_storage_folder(self):
+        path = os.path.join(self.data_dir, secrets.token_urlsafe(8))
+        os.makedirs(path)
+        return path
 
     ################### Fingerprinting ##################
     def add_fingerprint(self) -> Fingerprint:
@@ -34,17 +44,21 @@ class DB:
         with self.Session() as session:
             inc = session.query(Fingerprint).filter_by(id=id).first()
         return inc
-
+    def get_fingerprints(self) -> Query:
+        with self.Session() as session:
+            return session.query(Fingerprint)
     def add_trigger(self,
                     fingerprint_id: int,
-                    study_description_regex: str,
-                    series_description_regex: str,
-                    sop_class_uid_regex: str) -> Trigger:
+                    study_description_pattern: Union[str, None] = None,
+                    series_description_pattern: Union[str, None] = None,
+                    sop_class_uid_exact: Union[str, None] = None,
+                    exclude_pattern: Union[str, None] = None) -> Trigger:
 
         trigger = Trigger(fingerprint_id=fingerprint_id,
-                          study_description_regex=study_description_regex,
-                          series_description_regex=series_description_regex,
-                          sop_class_uid_regex=sop_class_uid_regex)
+                          study_description_pattern=study_description_pattern,
+                          series_description_pattern=series_description_pattern,
+                          sop_class_uid_exact=sop_class_uid_exact,
+                          exclude_pattern=exclude_pattern)
         return self.generic_add(trigger)
 
     def add_destination(self,
@@ -68,32 +82,12 @@ class DB:
         return self.generic_add(inference_server)
 
     ##### DYNAMIC #####
-    def add_incoming(self,
-                     patient_id,
-                     zip_path) -> Incoming:
-        # Add to DB
-        incoming = Incoming(patient_id=patient_id,
-                            zip_path=zip_path)
-        return self.generic_add(incoming)
-
-    def get_incoming(self, id) -> Incoming:
-        with self.Session() as session:
-            inc = session.query(Incoming).filter_by(id=id).first()
-        return inc
-
-    def get_incomings(self) -> Query:
-        with self.Session() as session:
-            return session.query(Incoming)
-
-    def get_incomings_by_kwargs(self, kwargs) -> Query:
-        with self.Session() as session:
-            return session.query(Incoming).filter_by(**kwargs)
-
     def add_task(self,
-                 fingerprint_id,
-                 incoming_id) -> Task:
+                 fingerprint_id) -> Task:
+        storage_fol = self.generate_storage_folder()
         task = Task(fingerprint_id=fingerprint_id,
-                    incoming_id=incoming_id)
+                    zip_path=os.path.join(storage_fol, "input.zip"),
+                    inference_server_zip=os.path.join(storage_fol, "output.zip"))
         return self.generic_add(task)
 
     def get_tasks_by_kwargs(self, kwargs) -> Query:

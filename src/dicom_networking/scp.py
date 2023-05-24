@@ -12,19 +12,17 @@ LOG_FORMAT = ('%(levelname)s:%(asctime)s:%(message)s')
 
 class SeriesInstance(pydantic.BaseModel):
     series_instance_uid: str
-    modality: str
     study_description: str
     series_description: str
     sop_class_uid: str
-    path: str
+    path: str  # Direct folder to this SeriesInstance
 
 
-class Incoming(pydantic.BaseModel):
+class Assoc(pydantic.BaseModel):
     assoc_id: str
     timestamp: datetime.datetime
-    patient_id: str
-    path: str
-    series_instances: Dict[str, SeriesInstance]
+    path: str  # Base folder
+    series_instances: Dict[str, SeriesInstance]  # Dict[series_instance_uid: SeriesInstance]
 
 
 class SCP:
@@ -53,10 +51,10 @@ class SCP:
         if self.ae:
             self.ae.shutdown()
 
-    def get_incoming(self, timeout=5):
-        return self.released_assoc_objs.get(timeout=timeout)
+    def get_incoming_queue(self):
+        return self.released_assoc_objs
 
-    def update_assoc_obj(self, event, patient_id, series_instance_uid, modality, study_description, series_description,
+    def update_assoc_obj(self, event, series_instance_uid, study_description, series_description,
                          sop_class_uid):
 
         # Thread id of incoming
@@ -64,17 +62,15 @@ class SCP:
 
         # If top level assoc obj does not exist, create it
         if assoc_id not in self.established_assoc_objs.keys():
-            self.established_assoc_objs[assoc_id] = Incoming(assoc_id=assoc_id,
-                                                             timestamp=datetime.datetime.now(),
-                                                             patient_id=patient_id,
-                                                             series_instances={},
-                                                             path=os.path.join(self.storage_dir, str(assoc_id)))
+            self.established_assoc_objs[assoc_id] = Assoc(assoc_id=assoc_id,
+                                                          timestamp=datetime.datetime.now(),
+                                                          series_instances={},
+                                                          path=os.path.join(self.storage_dir, str(assoc_id)))
 
         ## If not SeriesInstance exist in self.assoc_obj.series_instances.keys()
         if series_instance_uid not in self.established_assoc_objs[assoc_id].series_instances.keys():
             self.established_assoc_objs[assoc_id].series_instances[series_instance_uid] = SeriesInstance(
                 series_instance_uid=series_instance_uid,
-                modality=modality,
                 study_description=study_description,
                 series_description=series_description,
                 sop_class_uid=sop_class_uid,
@@ -92,9 +88,7 @@ class SCP:
         ds.file_meta = event.file_meta
         series_instance_uid = ds.get("SeriesInstanceUID", "None")
         self.update_assoc_obj(event=event,
-                              patient_id=ds.get("PatientID", "None"),
                               series_instance_uid=series_instance_uid,
-                              modality=ds.get("Modality", "None"),
                               study_description=ds.get("StudyDescription", "None"),
                               series_description=ds.get("SeriesDescription", "None"),
                               sop_class_uid=ds.get("SOPClassUID", "None")
