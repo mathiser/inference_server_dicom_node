@@ -1,5 +1,4 @@
 import os
-import secrets
 import shutil
 import tempfile
 import unittest
@@ -13,14 +12,13 @@ class TestDB(unittest.TestCase):
     def setUp(self) -> None:
         self.tmp_dir = tempfile.mkdtemp()
         os.makedirs(self.tmp_dir, exist_ok=True)
-        self.db = DB(data_dir=self.tmp_dir)
+        self.db = DB(base_dir=self.tmp_dir)
 
     def tearDown(self) -> None:
         shutil.rmtree(self.tmp_dir)
 
     def test_add_fingerprint(self):
         fp = self.db.add_fingerprint()
-        print(fp)
         self.assertIsInstance(fp, Fingerprint)
 
     def test_add_trigger(self):
@@ -78,7 +76,7 @@ class TestDB(unittest.TestCase):
                                                         model_human_readable_id="Some Model",
                                                         inference_server_url="https://zip-it.com.org")
 
-        task = self.db.add_task(fp.id, "some/path/to/input.zip")
+        task = self.db.add_task(fp.id)
         self.assertEqual(fp.id, task.fingerprint_id)
 
         self.assertEqual(trigger.id, task.fingerprint.triggers[0].id)
@@ -101,7 +99,7 @@ class TestDB(unittest.TestCase):
                                                         model_human_readable_id="Some Model",
                                                         inference_server_url="https://zip-it.com.org")
 
-        task = self.db.add_task(fp.id, "some/path/to/input.zip")
+        task = self.db.add_task(fp.id)
         self.assertFalse(task.deleted_remote)
         self.assertFalse(task.deleted_local)
         self.assertIsNone(task.inference_server_uid)

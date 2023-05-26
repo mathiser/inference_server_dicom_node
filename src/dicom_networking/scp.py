@@ -32,7 +32,7 @@ class SCP:
                  port: int,
                  storage_dir: str,
                  log_level=10,
-                 pynetdicom_log_level="",
+                 pynetdicom_log_level="standard",
                  ):
 
         logging.basicConfig(level=log_level, format=LOG_FORMAT)

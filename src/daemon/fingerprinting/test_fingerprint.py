@@ -13,23 +13,22 @@ class TestFingerprint(unittest.TestCase):
     def setUp(self) -> None:
         self.tmp_dir = tempfile.mkdtemp()
         os.makedirs(self.tmp_dir, exist_ok=True)
-        self.db = DB(data_dir=self.tmp_dir)
+        self.db = DB(base_dir=self.tmp_dir)
         self.series_instance1 = SeriesInstance(series_instance_uid="113.112.5553",
-                                          study_description="Interesting Study",
-                                          series_description="What a series",
-                                          sop_class_uid="1.2.3",
+                                               study_description="Interesting Study",
+                                               series_description="What a series",
+                                               sop_class_uid="1.2.3",
                                                path="path/to/1")
         self.series_instance2 = SeriesInstance(series_instance_uid="112.112.112",
-                                          study_description="A different but interesting Study",
-                                          series_description="What anoter series",
-                                          sop_class_uid="2.3.4",
+                                               study_description="A different but interesting Study",
+                                               series_description="What anoter series",
+                                               sop_class_uid="2.3.4",
                                                path="path/to/2")
         self.assoc = Assoc(assoc_id="1234567890",
                            timestamp=datetime.datetime.now(),
                            path="some/path",
                            series_instances={self.series_instance1.series_instance_uid: self.series_instance1,
                                              self.series_instance2.series_instance_uid: self.series_instance2})
-
 
     def tearDown(self) -> None:
         shutil.rmtree(self.tmp_dir)
@@ -41,6 +40,7 @@ class TestFingerprint(unittest.TestCase):
         fp = self.db.get_fingerprint(fp.id)
 
         self.assertTrue(fast_fingerprint(fp=fp, assoc=self.assoc))
+
     def test_fast_fingerprint_fail(self):
         fp = self.db.add_fingerprint()
         self.db.add_trigger(fingerprint_id=fp.id, sop_class_uid_exact="1.2.3")
@@ -56,6 +56,7 @@ class TestFingerprint(unittest.TestCase):
         matches = slow_fingerprint(fp=fp, assoc=self.assoc)
         self.assertIsNotNone(matches)
         self.assertEqual(2, len(matches))
+
     def test_slow_fingerprint_no_match(self):
         fp = self.db.add_fingerprint()
         self.db.add_trigger(fingerprint_id=fp.id, sop_class_uid_exact="1.2.3", study_description_pattern="Interesting")
@@ -71,6 +72,7 @@ class TestFingerprint(unittest.TestCase):
         fp = self.db.get_fingerprint(fp.id)
         matches = slow_fingerprint(fp=fp, assoc=self.assoc)
         self.assertIsNone(matches)
+
 
 if __name__ == '__main__':
     unittest.main()

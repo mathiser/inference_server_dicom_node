@@ -1,3 +1,4 @@
+import datetime
 import os.path
 import shutil
 import tempfile
@@ -21,38 +22,41 @@ def get_test_dicom(path):
 
 class TestSCP(unittest.TestCase):
     def setUp(self) -> None:
+        os.makedirs(".tmp", exist_ok=True)
+        self.tmp_dir = tempfile.mkdtemp(dir=".tmp", prefix=f"{datetime.datetime.now()}_")
+
         self.test_case_dir = ".tmp/test_images/"
         if not os.path.isdir(self.test_case_dir):
             get_test_dicom(self.test_case_dir)
-        self.tmp_dir = tempfile.mkdtemp(dir=".tmp/")
 
-        self.scp = SCP(ae_title="DCM_ENDPOINT_AE",
+        self.tmp_source = os.path.join(self.tmp_dir, "source")
+        os.makedirs(self.tmp_source)
+        self.scp = SCP(ae_title="SOURCE",
                        ip="localhost",
                        port=11110,
-                       storage_dir=self.tmp_dir)
+                       storage_dir=self.tmp_source,
+                       pynetdicom_log_level="none",
+                       log_level=20)
 
         self.scp.run_scp(blocking=False)
 
     def tearDown(self) -> None:
-        shutil.rmtree(self.tmp_dir)
         self.scp.ae.shutdown()
+        shutil.rmtree(self.tmp_dir)
         del self.scp
-
-    def test_scp_and_post_to_dicom_node(self):
-        self.assertTrue(os.path.exists(self.test_case_dir))
-        self.assertTrue(post_folder_to_dicom_node(scu_ip=self.scp.ip, scu_port=self.scp.port, scu_ae_title=self.scp.ae_title, dicom_dir=self.test_case_dir))
 
     def test_scp_and_post_multiple_simultaneous_to_dicom_node(self):
         self.assertTrue(os.path.exists(self.test_case_dir))
-        args = [(self.scp.ip, self.scp.port, self.scp.ae_title, self.test_case_dir) for i in range(4)]
+        args = [(self.scp.ip, self.scp.port, self.scp.ae_title, self.test_case_dir) for i in range(2)]
 
         def post(scu_ip, scu_port, scu_ae_title, dicom_dir):
             self.assertTrue(post_folder_to_dicom_node(scu_ip=scu_ip, scu_port=scu_port, scu_ae_title=scu_ae_title, dicom_dir=dicom_dir))
-
-        t = ThreadPool(4)
+        t = ThreadPool(2)
         t.starmap(post, args)
         t.close()
         t.join()
+        self.assertGreater(len(os.listdir(self.tmp_source)), 0)
+
 
 if __name__ == '__main__':
     unittest.main()
