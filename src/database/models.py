@@ -1,78 +1,89 @@
 import datetime
-import secrets
-import tempfile
+from typing import Optional, List
 
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey
-from sqlalchemy.orm import declarative_base, relationship
+from sqlalchemy import Integer, String, DateTime, Boolean, ForeignKey, Table, Column
+from sqlalchemy.orm import DeclarativeBase, relationship, mapped_column, Mapped
 
-Base = declarative_base()
+
+class Base(DeclarativeBase):
+    pass
+
+
+class DestinationFingerprintAssociation(Base):
+    __tablename__ = "destination_fingerprint_associations"
+    timestamp: Mapped[datetime.datetime] = mapped_column(default=datetime.datetime.now)
+
+    destination_id: Mapped[int] = mapped_column(ForeignKey("destinations.id"), primary_key=True)
+    fingerprint_id: Mapped[int] = mapped_column(ForeignKey("fingerprints.id"), primary_key=True)
+
+    fingerprint: Mapped["Fingerprint"] = relationship(lazy="joined",
+                                                      back_populates="destination_associations")
+
 
 ######## Fingerprint Schemas ###########
 class Trigger(Base):
     __tablename__ = "triggers"
-    id = Column(Integer, unique=True, primary_key=True, autoincrement=True)
-    fingerprint_id = Column(Integer, ForeignKey("fingerprints.id"))
+    id: Mapped[int] = mapped_column(unique=True, primary_key=True, autoincrement=True)
+    timestamp: Mapped[datetime.datetime] = mapped_column(default=datetime.datetime.now)
+
+    fingerprint_id: Mapped[int] = mapped_column(ForeignKey("fingerprints.id", ondelete="cascade"))
 
     # Regex matches
-    study_description_pattern = Column(String, nullable=True)
-    series_description_pattern = Column(String, nullable=True)
-    sop_class_uid_exact = Column(String, nullable=True)
-    exclude_pattern = Column(String, nullable=True)
+    study_description_pattern: Mapped[Optional[str]]
+    series_description_pattern: Mapped[Optional[str]]
+    sop_class_uid_exact: Mapped[Optional[str]]
+    exclude_pattern: Mapped[Optional[str]]
+
 
 class Destination(Base):
     __tablename__ = "destinations"
-    id = Column(Integer, unique=True, primary_key=True, autoincrement=True)
-    timestamp = Column(DateTime, default=datetime.datetime.now)
-    fingerprint_id = Column(Integer, ForeignKey("fingerprints.id"))
+    id: Mapped[int] = mapped_column(unique=True, primary_key=True, autoincrement=True)
+    timestamp: Mapped[datetime.datetime] = mapped_column(default=datetime.datetime.now)
 
     # The details of the receiver
-    scu_ip = Column(String)
-    scu_port = Column(Integer)
-    scu_ae_title = Column(String)
-
-class InferenceServer(Base):
-    __tablename__ = "inference_servers"
-    id = Column(Integer, unique=True, primary_key=True, autoincrement=True)
-    timestamp = Column(DateTime, default=datetime.datetime.now)
-    fingerprint_id = Column(Integer, ForeignKey("fingerprints.id"))
-
-    # Inference Server Details
-    model_human_readable_id = Column(String)
-    inference_server_url = Column(String)
+    scu_ip: Mapped[str]
+    scu_port: Mapped[int]
+    scu_ae_title: Mapped[str]
 
 class Fingerprint(Base):
     __tablename__ = "fingerprints"
-    id = Column(Integer, unique=True, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(unique=True, primary_key=True, autoincrement=True)
+    timestamp: Mapped[datetime.datetime] = mapped_column(default=datetime.datetime.now)
 
-    triggers = relationship("Trigger", lazy="joined")
-    inference_server = relationship("InferenceServer", lazy="joined", uselist=False)
-    destinations = relationship("Destination", lazy="joined")
+    version: Mapped[str] = mapped_column(default="1.0")
+    description: Mapped[str] = mapped_column(default="")
+
+    triggers: Mapped[List["Trigger"]] = relationship(lazy="joined", cascade="all, delete")
+
+    # Inference Server
+    inference_server_url: Mapped[str]
+    model_human_readable_id: Mapped[str]
+
+    destinations: Mapped[List["Destination"]] = relationship(lazy="joined",
+                                                             secondary="destination_fingerprint_associations",
+                                                             viewonly=True)
+    destination_associations: Mapped[List[DestinationFingerprintAssociation]] = relationship(back_populates="fingerprint")
 
 
 ########## Tasks ##########
 class Task(Base):
     __tablename__ = "tasks"
-    id = Column(Integer, index=True, unique=True, primary_key=True, autoincrement=True)
-    timestamp = Column(DateTime, default=datetime.datetime.now)
+    id: Mapped[int] = mapped_column(unique=True, primary_key=True, autoincrement=True)
+    timestamp: Mapped[datetime.datetime] = mapped_column(default=datetime.datetime.now)
 
-    fingerprint_id = Column(Integer, ForeignKey("fingerprints.id"))
-    fingerprint = relationship("Fingerprint", lazy="joined", uselist=False)
+    fingerprint_id: Mapped[int] = mapped_column(ForeignKey("fingerprints.id"))
+    fingerprint: Mapped["Fingerprint"] = relationship(lazy="joined", uselist=False)
 
     # zipped on pull from SCP. Ready to post.
-    zip_path = Column(String)
+    zip_path: Mapped[str]
 
     # Status stamp
-    status = Column(Integer, default=0)
+    status: Mapped[int] = mapped_column(Integer, default=0)
 
     # Inference server uid
-    inference_server_uid = Column(String, nullable=True, default=None)
-    inference_server_zip = Column(String, nullable=True, default=None)
+    inference_server_uid: Mapped[str] = mapped_column(nullable=True, default=None)
+    inference_server_zip: Mapped[str] = mapped_column(nullable=True, default=None)
 
     # Toggles check for final deletes
-    deleted_local = Column(Boolean, default=False)
-    deleted_remote = Column(Boolean, default=False)
-
-
-
-
-
+    deleted_local: Mapped[bool] = mapped_column(default=False)
+    deleted_remote: Mapped[bool] = mapped_column(default=False)

@@ -1,11 +1,12 @@
 import os
 import secrets
-from typing import Union
+from typing import Union, List
 
 import sqlalchemy
 from sqlalchemy.orm import sessionmaker, scoped_session, Query
 
-from database.models import Destination, Fingerprint, Trigger, InferenceServer, Task
+from database.models import Destination, Fingerprint, Trigger, Task, \
+    DestinationFingerprintAssociation
 from database.models import Base
 
 
@@ -30,23 +31,45 @@ class DB:
 
         self.session_maker = sessionmaker(bind=self.engine, expire_on_commit=False)
         self.Session = scoped_session(self.session_maker)
+
     def generate_storage_folder(self):
         path = os.path.join(self.data_dir, secrets.token_urlsafe(8))
         os.makedirs(path)
         return path
 
+    def add_destination_to_fingerprint(self, fingerprint_id, destination_id):
+        ass = self.generic_add(DestinationFingerprintAssociation(fingerprint_id=fingerprint_id,
+                                                                 destination_id=destination_id))
+        return ass
+
     ################### Fingerprinting ##################
-    def add_fingerprint(self) -> Fingerprint:
-        fpm = Fingerprint()
-        return self.generic_add(fpm)
+    def add_fingerprint(self,
+                        model_human_readable_id: str,
+                        inference_server_url: str,
+                        version: Union[str, None] = None,
+                        description: Union[str, None] = None,
+                        destination_ids: List[int] = [],
+                        ) -> Fingerprint:
+        fp = Fingerprint(version=version,
+                         description=description,
+                         model_human_readable_id=model_human_readable_id,
+                         inference_server_url=inference_server_url)
+        fp = self.generic_add(fp)
+
+        for dest_id in destination_ids:
+            self.add_destination_to_fingerprint(fp.id, dest_id)
+
+        return self.get_fingerprint(fp.id)
 
     def get_fingerprint(self, id) -> Fingerprint:
         with self.Session() as session:
             inc = session.query(Fingerprint).filter_by(id=id).first()
         return inc
+
     def get_fingerprints(self) -> Query:
         with self.Session() as session:
             return session.query(Fingerprint)
+
     def add_trigger(self,
                     fingerprint_id: int,
                     study_description_pattern: Union[str, None] = None,
@@ -62,24 +85,13 @@ class DB:
         return self.generic_add(trigger)
 
     def add_destination(self,
-                        fingerprint_id: int,
                         scu_ip: str,
                         scu_port: int,
                         scu_ae_title: str) -> Destination:
-        dest = Destination(fingerprint_id=fingerprint_id,
-                           scu_ip=scu_ip,
+        dest = Destination(scu_ip=scu_ip,
                            scu_port=scu_port,
                            scu_ae_title=scu_ae_title)
         return self.generic_add(dest)
-
-    def add_inference_server(self,
-                             fingerprint_id: int,
-                             model_human_readable_id: str,
-                             inference_server_url: str) -> InferenceServer:
-        inference_server = InferenceServer(fingerprint_id=fingerprint_id,
-                                           inference_server_url=inference_server_url,
-                                           model_human_readable_id=model_human_readable_id)
-        return self.generic_add(inference_server)
 
     ##### DYNAMIC #####
     def add_task(self,
@@ -95,8 +107,7 @@ class DB:
             return session.query(Task).filter_by(**kwargs)
 
     def get_tasks(self) -> Query:
-        with self.Session() as session:
-            return session.query(Task)
+        return self.generic_get_all(Task)
 
     def update_task(self,
                     task_id: int,
@@ -117,6 +128,7 @@ class DB:
 
             session.commit()
             session.refresh(t)
+            return t
 
     def generic_add(self, item):
         with self.Session() as session:
@@ -125,3 +137,56 @@ class DB:
             session.refresh(item)
 
         return item
+
+    def generic_get(self, cls, id):
+        with self.Session() as session:
+            return session.query(cls).filter_by(id=id).first()
+
+    def generic_get_all(self, cls):
+        with self.Session() as session:
+            return session.query(cls)
+
+    def generic_delete(self, cls, id):
+        with self.Session() as session:
+            try:
+                deleted_rows = session.query(cls).filter_by(id=id).delete()
+                session.commit()
+                return deleted_rows
+            except Exception as e:
+                print(e)
+                return False
+
+    def delete_destination(self, destination_id):
+        try:
+            return self.generic_delete(Destination, destination_id)
+
+        except:
+            return False
+
+    def delete_trigger(self, trigger_id):
+        try:
+            return self.generic_delete(Trigger, trigger_id)
+        except:
+            return False
+
+
+    def delete_fingerprint(self, fingerprint_id):
+        try:
+            # Cannot get cascades to work. Doing the work for sqlalchemy. Fix at some point.
+            fp = self.get_fingerprint(fingerprint_id)
+
+            # Delete triggers
+            for t in fp.triggers:
+                self.generic_delete(Trigger, t.id)
+
+            with self.Session() as session:
+                try:
+                    deleted_rows = session.query(DestinationFingerprintAssociation).filter_by(fingerprint_id=fp.id).delete()
+                    session.commit()
+                except Exception as e:
+                    print(e)
+
+            return self.generic_delete(Fingerprint, fingerprint_id)
+        except Exception as e:
+            print(e)
+            raise e

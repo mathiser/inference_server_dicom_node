@@ -34,8 +34,8 @@ class TestSCP(unittest.TestCase):
         self.scp = SCP(ae_title="SOURCE",
                        ip="localhost",
                        port=11110,
-                       storage_dir=self.tmp_source,
-                       pynetdicom_log_level="none",
+                       temporary_storage=self.tmp_source,
+                       pynetdicom_log_level="Normal",
                        log_level=20)
 
         self.scp.run_scp(blocking=False)

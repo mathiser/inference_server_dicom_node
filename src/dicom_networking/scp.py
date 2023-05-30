@@ -30,7 +30,7 @@ class SCP:
                  ae_title: str,
                  ip: str,
                  port: int,
-                 storage_dir: str,
+                 temporary_storage: str,
                  log_level=10,
                  pynetdicom_log_level="standard",
                  ):
@@ -41,7 +41,7 @@ class SCP:
         self.ae_title = ae_title
         self.ip = ip
         self.port = port
-        self.storage_dir = storage_dir
+        self.temporary_storage = temporary_storage
         self.ae = None
 
         self.established_assoc_objs = {}  # container for finished associations
@@ -65,7 +65,7 @@ class SCP:
             self.established_assoc_objs[assoc_id] = Assoc(assoc_id=assoc_id,
                                                           timestamp=datetime.datetime.now(),
                                                           series_instances={},
-                                                          path=os.path.join(self.storage_dir, str(assoc_id)))
+                                                          path=os.path.join(self.temporary_storage, str(assoc_id)))
 
         ## If not SeriesInstance exist in self.assoc_obj.series_instances.keys()
         if series_instance_uid not in self.established_assoc_objs[assoc_id].series_instances.keys():
@@ -103,7 +103,7 @@ class SCP:
         return 0x0000
 
     def handle_release(self, event):
-        self.released_assoc_objs.put(self.established_assoc_objs[event.assoc.native_id])
+        self.released_assoc_objs.put(self.established_assoc_objs[event.assoc.native_id], block=True)
         del self.established_assoc_objs[event.assoc.native_id]
 
     def create_accepting_ae(self):
@@ -135,6 +135,6 @@ if __name__ == "__main__":
     scp = SCP(ae_title="test_scp",
               ip="localhost",
               port=10004,
-              storage_dir="test_dir",
+              temporary_storage="test_dir",
               pynetdicom_log_level="debug")
     scp.run_scp(blocking=True)
