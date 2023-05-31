@@ -63,7 +63,8 @@ class Fingerprint(Base):
                                                              secondary="destination_fingerprint_associations",
                                                              viewonly=True)
     destination_associations: Mapped[List[DestinationFingerprintAssociation]] = relationship(back_populates="fingerprint")
-
+    delete_remotely: Mapped[bool] = mapped_column(default=True)
+    delete_locally: Mapped[bool] = mapped_column(default=True)
 
 ########## Tasks ##########
 class Task(Base):

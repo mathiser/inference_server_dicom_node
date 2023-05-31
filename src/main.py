@@ -14,10 +14,10 @@ class Environment:
     SCP_PORT = 10000
     SCP_AE_TITLE = "DICOM_RECEIVER"
     TEMPORARY_STORAGE = "/tmp/DICOM/"
-    LOG_LEVEL = 10
+    LOG_LEVEL = 20
     PYNETDICOM_LOG_LEVEL = "Normal"
     DAEMON_RUN_INTERVAL = 10
-    CERT_FILE = True
+    CERT_FILE = "CERT/cert.crt"
     TIMEOUT = 7200
     DB_BASEDIR = "./.data/DB"
     def __init__(self):
@@ -44,7 +44,7 @@ def main():
                     timeout=int(env.TIMEOUT))
     daemon.start()
 
-    app = DicomNodeAPI(db=db)
+    app = DicomNodeAPI(db=db, log_level=env.LOG_LEVEL)
     uvicorn.run(app=app,  # Blocks
                 host="localhost",
                 port=8181)

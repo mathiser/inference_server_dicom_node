@@ -49,15 +49,20 @@ class DB:
                         version: Union[str, None] = None,
                         description: Union[str, None] = None,
                         destination_ids: List[int] = [],
+                        delete_locally: Union[bool, None] = None,
+                        delete_remotely: Union[bool, None] = None,
                         ) -> Fingerprint:
         fp = Fingerprint(version=version,
                          description=description,
                          model_human_readable_id=model_human_readable_id,
-                         inference_server_url=inference_server_url)
+                         inference_server_url=inference_server_url,
+                         delete_remotely=delete_remotely,
+                         delete_locally=delete_locally)
         fp = self.generic_add(fp)
 
-        for dest_id in destination_ids:
-            self.add_destination_to_fingerprint(fp.id, dest_id)
+        if destination_ids:
+            for dest_id in destination_ids:
+                self.add_destination_to_fingerprint(fp.id, dest_id)
 
         return self.get_fingerprint(fp.id)
 

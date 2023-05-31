@@ -1,7 +1,6 @@
 import logging
-import os
 import tempfile
-from typing import Any, Optional, Union, List
+from typing import Any, Union, List
 
 import uvicorn
 from fastapi import FastAPI
@@ -9,16 +8,13 @@ from fastapi import FastAPI
 from database.db import DB
 from database.models import Trigger, Destination
 
-threads = []
-
-LOG_FORMAT = ('%(levelname)s:%(asctime)s:%(message)s')
-logging.basicConfig(level=10, format=LOG_FORMAT)
-
-
 class DicomNodeAPI(FastAPI):
-    def __init__(self, db: DB, **extra: Any):
+    def __init__(self, db: DB, log_level, **extra: Any):
         super().__init__(db=db, **extra)
         self.db = db
+
+        LOG_FORMAT = ('%(levelname)s:%(asctime)s:%(message)s')
+        logging.basicConfig(level=log_level, format=LOG_FORMAT)
 
         @self.get("/")
         def public_hello_world():
@@ -29,13 +25,17 @@ class DicomNodeAPI(FastAPI):
                             model_human_readable_id: str,
                             version: Union[str, None] = None,
                             description: Union[str, None] = None,
-                            destination_ids: Union[List[int], None] = None
+                            destination_ids: Union[List[int], None] = None,
+                            delete_locally: Union[bool, None] = None,
+                            delete_remotely: Union[bool, None] = None,
                             ):
             return self.db.add_fingerprint(version=version,
                                            description=description,
                                            destination_ids=destination_ids,
                                            inference_server_url=inference_server_url,
-                                           model_human_readable_id=model_human_readable_id)
+                                           model_human_readable_id=model_human_readable_id,
+                                           delete_remotely=delete_remotely,
+                                           delete_locally=delete_locally)
 
         @self.post("/destination_fingerprint_association/")
         def add_destination_fingerprint_association(fingerprint_id: int,
@@ -75,13 +75,18 @@ class DicomNodeAPI(FastAPI):
                                            scu_port=scu_port,
                                            scu_ae_title=scu_ae_title)
 
-        @self.post("/trigger/{trigger_id}")
+        @self.delete("/triggers/{trigger_id}")
         def delete_trigger(trigger_id: int):
             return self.db.delete_trigger(trigger_id=trigger_id)
 
-        @self.post("/trigger/{destination_id}")
+        @self.delete("/destinations/{destination_id}")
         def delete_destination(destination_id: int):
             return self.db.delete_destination(destination_id=destination_id)
+
+        @self.delete("/fingerprints/{fingerprint_id}")
+        def delete_destination(fingerprint_id: int):
+            return self.db.delete_fingerprint(fingerprint_id=fingerprint_id)
+
 
 
 if __name__ == "__main__":

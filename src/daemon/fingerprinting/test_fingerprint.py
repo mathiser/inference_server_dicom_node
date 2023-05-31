@@ -33,8 +33,10 @@ class TestFingerprint(unittest.TestCase):
     def tearDown(self) -> None:
         shutil.rmtree(self.tmp_dir)
 
+    def get_fingerprint(self):
+        return self.db.add_fingerprint(inference_server_url="http://test.com.org", model_human_readable_id="test")
     def test_fast_fingerprint_pass(self):
-        fp = self.db.add_fingerprint()
+        fp = self.get_fingerprint()
         self.db.add_trigger(fingerprint_id=fp.id, sop_class_uid_exact="1.2.3")
         self.db.add_trigger(fingerprint_id=fp.id, sop_class_uid_exact="2.3.4")
         fp = self.db.get_fingerprint(fp.id)
@@ -42,14 +44,14 @@ class TestFingerprint(unittest.TestCase):
         self.assertTrue(fast_fingerprint(fp=fp, assoc=self.assoc))
 
     def test_fast_fingerprint_fail(self):
-        fp = self.db.add_fingerprint()
+        fp = self.get_fingerprint()
         self.db.add_trigger(fingerprint_id=fp.id, sop_class_uid_exact="1.2.3")
         self.db.add_trigger(fingerprint_id=fp.id, sop_class_uid_exact="2.3.5")
         fp = self.db.get_fingerprint(fp.id)
         self.assertFalse(fast_fingerprint(fp=fp, assoc=self.assoc))
 
     def test_slow_fingerprint_pass(self):
-        fp = self.db.add_fingerprint()
+        fp = self.get_fingerprint()
         self.db.add_trigger(fingerprint_id=fp.id, sop_class_uid_exact="1.2.3", study_description_pattern="Interesting")
         self.db.add_trigger(fingerprint_id=fp.id, sop_class_uid_exact="2.3.4", exclude_pattern="BRAIN FART!!")
         fp = self.db.get_fingerprint(fp.id)
@@ -58,7 +60,7 @@ class TestFingerprint(unittest.TestCase):
         self.assertEqual(2, len(matches))
 
     def test_slow_fingerprint_no_match(self):
-        fp = self.db.add_fingerprint()
+        fp = self.get_fingerprint()
         self.db.add_trigger(fingerprint_id=fp.id, sop_class_uid_exact="1.2.3", study_description_pattern="Interesting")
         self.db.add_trigger(fingerprint_id=fp.id, sop_class_uid_exact="2.3.5", exclude_pattern="BRAIN FART!!")
         fp = self.db.get_fingerprint(fp.id)
@@ -66,7 +68,7 @@ class TestFingerprint(unittest.TestCase):
         self.assertIsNone(slow_fingerprint(fp=fp, assoc=self.assoc))
 
     def test_slow_fingerprint_exclude(self):
-        fp = self.db.add_fingerprint()
+        fp = self.get_fingerprint()
         self.db.add_trigger(fingerprint_id=fp.id, sop_class_uid_exact="1.2.3", series_description_pattern="What ")
         self.db.add_trigger(fingerprint_id=fp.id, sop_class_uid_exact="2.3.5", exclude_pattern="Interesting")
         fp = self.db.get_fingerprint(fp.id)

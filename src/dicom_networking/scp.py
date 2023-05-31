@@ -7,6 +7,8 @@ from typing import Dict
 import pydantic
 from pynetdicom import AE, evt, StoragePresentationContexts, _config
 
+from decorators.logging import log
+
 LOG_FORMAT = ('%(levelname)s:%(asctime)s:%(message)s')
 
 
@@ -51,9 +53,11 @@ class SCP:
         if self.ae:
             self.ae.shutdown()
 
+    @log
     def get_incoming_queue(self):
         return self.released_assoc_objs
 
+    @log
     def update_assoc_obj(self, event, series_instance_uid, study_description, series_description,
                          sop_class_uid):
 
@@ -62,6 +66,7 @@ class SCP:
 
         # If top level assoc obj does not exist, create it
         if assoc_id not in self.established_assoc_objs.keys():
+            logging.info(f"Inserting assoc_id: {assoc_id} to established_assoc_objs")
             self.established_assoc_objs[assoc_id] = Assoc(assoc_id=assoc_id,
                                                           timestamp=datetime.datetime.now(),
                                                           series_instances={},
@@ -69,6 +74,8 @@ class SCP:
 
         ## If not SeriesInstance exist in self.assoc_obj.series_instances.keys()
         if series_instance_uid not in self.established_assoc_objs[assoc_id].series_instances.keys():
+            logging.info(
+                f"Inserting series_instance_uid: {series_instance_uid} on assoc_id: {assoc_id} to established_assoc_objs")
             self.established_assoc_objs[assoc_id].series_instances[series_instance_uid] = SeriesInstance(
                 series_instance_uid=series_instance_uid,
                 study_description=study_description,
@@ -77,7 +84,7 @@ class SCP:
                 path=os.path.join(self.established_assoc_objs[assoc_id].path, sop_class_uid, series_instance_uid)
             )
         return self.established_assoc_objs[assoc_id]
-
+    @log
     def handle_store(self, event):
         """Handle EVT_C_STORE events."""
         assoc_id = event.assoc.native_id
@@ -95,22 +102,20 @@ class SCP:
                               )
 
         # Save the dataset using the SOP Instance UID as the filename
-        series_instance_folder = os.path.join(self.established_assoc_objs[assoc_id].series_instances[series_instance_uid].path)
+        series_instance_folder = os.path.join(
+            self.established_assoc_objs[assoc_id].series_instances[series_instance_uid].path)
         os.makedirs(series_instance_folder, exist_ok=True)
         ds.save_as(os.path.join(series_instance_folder, ds.SOPInstanceUID + ".dcm"), write_like_original=False)
 
         # Return a 'Success' status
         return 0x0000
-
+    @log
     def handle_release(self, event):
+        logging.debug(f"Length of self.established_assoc_objs: {len(self.established_assoc_objs)}")
         self.released_assoc_objs.put(self.established_assoc_objs[event.assoc.native_id], block=True)
         del self.established_assoc_objs[event.assoc.native_id]
 
-    def create_accepting_ae(self):
-        self.ae = AE(ae_title=self.ae_title)
-        self.ae.supported_contexts = StoragePresentationContexts
-        return self.ae
-
+    @log
     def run_scp(self, blocking=True):
         handler = [
             (evt.EVT_C_STORE, self.handle_store),
@@ -122,7 +127,9 @@ class SCP:
                 f"Starting SCP -- InferenceServerDicomNode: {self.ip}:{str(self.port)} - {self.ae_title}")
 
             # Create and run
-            self.ae = self.create_accepting_ae()
+            self.ae = AE(ae_title=self.ae_title)
+            self.ae.supported_contexts = StoragePresentationContexts
+            self.ae.maximum_pdu_size = 0
             self.ae.start_server((self.ip, self.port), block=blocking, evt_handlers=handler)
 
         except OSError as ose:
