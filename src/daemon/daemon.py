@@ -4,10 +4,12 @@ import logging
 import os
 import queue
 import shutil
+import tarfile
 import tempfile
 import threading
-import zipfile
+import tarfile
 import time
+from io import BytesIO
 from typing import List
 
 from daemon.fingerprinting.fingerprint import fast_fingerprint, slow_fingerprint
@@ -29,45 +31,41 @@ class Daemon(threading.Thread):
 
         LOG_FORMAT = ('%(levelname)s:%(asctime)s:%(message)s')
         logging.basicConfig(level=log_level, format=LOG_FORMAT)
+        self.logger = logging.getLogger(__name__)
+
 
     @log
     def kill(self):
-        logging.debug(f"Killing daemon")
+        self.logger.debug(f"Killing daemon")
         self.running = False
 
     @log
-    def zipdirs(self, zip_path, paths):
-        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
+    def tar_dirs(self, tar_path, paths: List):
+        with tarfile.TarFile.open(tar_path, mode="w|gz") as tf:
             for path in paths:
-                # ziph is zipfile handle
-                for root, dirs, files in os.walk(path):
-                    for file in files:
-                        zipf.write(os.path.join(root, file),
-                                   os.path.relpath(os.path.join(root, file),
-                                                   os.path.join(path, '..')))
-
+                tf.add(path, arcname=os.path.basename(path))
     @log
-    def fingerprint(self, timeout):
+    def fingerprint(self):
         fps = list(self.db.get_fingerprints())
         waiting = True
         while waiting:
             try:
-                assoc = self.scp.get_incoming_queue().get(timeout=timeout)
-                logging.info(f"Running fingerprinting on assoc_id: {assoc}")
+                assoc = self.scp.get_incoming_queue().get(timeout=self.run_interval)
+                self.logger.info(f"Running fingerprinting on assoc_id: {assoc}")
 
                 for fp in fps:
                     # if fast_fingerprint(assoc=assoc, fp=fp):
                     matching_series_instances = slow_fingerprint(assoc=assoc, fp=fp)
                     if matching_series_instances:
                         task = self.db.add_task(fingerprint_id=fp.id)
-                        logging.info(f"Fingerprint match: {task.__dict__}")
+                        self.logger.info(f"Fingerprint match: {task.__dict__}")
 
                         matching_series_instance_paths = list([os.path.dirname(matching_series_instance.path) for matching_series_instance in
                                           matching_series_instances])
 
-                        logging.info(f"Zipping up {matching_series_instance_paths} for task: {task.__dict__}")
-                        self.zipdirs(zip_path=task.zip_path,
-                                     paths=matching_series_instance_paths)
+                        self.logger.info(f"tarping up {matching_series_instance_paths} for task: {task.__dict__}")
+                        self.tar_dirs(tar_path=task.tar_path,
+                                      paths=matching_series_instance_paths)
                 # Escape function if incomings are all fingerprinted
                 if self.scp.get_incoming_queue().empty():
                     waiting = False
@@ -82,7 +80,7 @@ class Daemon(threading.Thread):
         for task in tasks:
             # Post to inference_server
             res = self.client.post_task(task)
-            logging.debug(res)
+            self.logger.debug(res)
             if res.ok:
                 uid = json.loads(res.content)
                 self.db.update_task(task_id=task.id, status=1, inference_server_uid=uid)
@@ -100,7 +98,7 @@ class Daemon(threading.Thread):
         for task in tasks:
             if task.status not in [10, 11, -1]:
                 if self.is_retirement_ready(task.timestamp):
-                    logging.info(f"Retiring task: {task.__dict__}")
+                    self.logger.info(f"Retiring task: {task.__dict__}")
                     self.db.update_task(task_id=task.id,
                                         status=-1)
 
@@ -113,30 +111,30 @@ class Daemon(threading.Thread):
             res = self.client.get_task(task)
 
             if res.ok:
-                logging.info(f"Task: {task.inference_server_uid} was retrieved successfully")
-                with open(task.inference_server_zip, "bw") as f:
+                self.logger.info(f"Task: {task.inference_server_uid} was retrieved successfully")
+                with open(task.inference_server_tar, "bw") as f:
                     f.write(res.content)
                 self.db.update_task(task_id=task.id, status=2)  # Ready to post to destinations
 
             elif res.status_code in [551, 554]:
-                logging.info(
+                self.logger.info(
                     f"Task: {task.inference_server_uid}, seems to be on the way, but not finished yet")
 
             elif res.status_code in [405, 500, 552, 553]:
-                logging.error(
+                self.logger.error(
                     f"Task: {task.inference_server_uid}, has failed with status code {res.status_code}")
                 self.db.update_task(task.id, status=3)
             else:
-                logging.info(
+                self.logger.info(
                     f"This status code should not be possible for Task: {task.inference_server_task.uid}. Go talk to an admin")
 
     @log
     def post_to_final_destinations(self):
         tasks = list(self.db.get_tasks_by_kwargs({"status": 2}))
         for task in tasks:
-            logging.info(f"Posting task {task.__dict__} to final destination")
+            self.logger.info(f"Posting task {task.__dict__} to final destination")
             with tempfile.TemporaryDirectory() as tmp_dir:
-                shutil.unpack_archive(task.inference_server_zip, extract_dir=tmp_dir)
+                shutil.unpack_archive(task.inference_server_tar, extract_dir=tmp_dir)
                 if len(task.fingerprint.destinations) == 0:
                     self.db.update_task(task.id, status=3)
                 else:
@@ -159,25 +157,25 @@ class Daemon(threading.Thread):
     @log
     def delete_files(self, tasks: List[Task], final_task_status: int):
         for task in tasks:
-            logging.info(f"Running deletion for {task.__dict__}")
+            self.logger.info(f"Running deletion for {task.__dict__}")
             # For local files
             if task.fingerprint.delete_locally and not task.deleted_local:  # Delete if fingerprint dictates to do so
-                if os.path.isfile(task.zip_path):
-                    logging.info(f"Deleting {task.zip_path}")
-                    os.remove(task.zip_path)
-                if os.path.isfile(task.inference_server_zip):
-                    logging.info(f"Deleting {task.inference_server_zip}")
-                    os.remove(task.inference_server_zip)
+                if os.path.isfile(task.tar_path):
+                    self.logger.info(f"Deleting {task.tar_path}")
+                    os.remove(task.tar_path)
+                if os.path.isfile(task.inference_server_tar):
+                    self.logger.info(f"Deleting {task.inference_server_tar}")
+                    os.remove(task.inference_server_tar)
                 self.db.update_task(task.id, deleted_local=True)
 
             # For remote files (on inference server)
             if task.fingerprint.delete_remotely and not task.deleted_remote:
-                logging.info(f"Deleting remotely: {task.inference_server_uid}")
+                self.logger.info(f"Deleting remotely: {task.inference_server_uid}")
                 self.client.delete_task(task)
                 self.db.update_task(task.id, deleted_remote=True)
 
             # Update status to final_task_status. This indicates that task deletion has been considered
-            logging.info(f"Updating {task.__dict__} to status {final_task_status}")
+            self.logger.info(f"Updating {task.__dict__} to status {final_task_status}")
             self.db.update_task(task.id, status=final_task_status)
 
 

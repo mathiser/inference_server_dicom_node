@@ -18,10 +18,10 @@ class Client:
     def post_task(self, task) -> requests.Response:
         url = urljoin(task.fingerprint.inference_server_url, "/api/tasks/")
         logging.debug(f"[ ] Posting task {task.__dict__} to {url}")
-        with open(task.zip_path, "br") as zip_file:
+        with open(task.tar_path, "br") as tar_file:
             res = requests.post(url=url,
                                 params={"model_human_readable_id": task.fingerprint.model_human_readable_id},
-                                files={"zip_file": zip_file},
+                                files={"tar_file": tar_file},
                                 verify=self.cert)
             assert isinstance(res, requests.Response)
             logging.debug(f"[X] Posting task {task.__dict__} to {url}")

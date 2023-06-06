@@ -1,7 +1,7 @@
 import datetime
 from typing import Optional, List
 
-from sqlalchemy import Integer, String, DateTime, Boolean, ForeignKey, Table, Column
+from sqlalchemy import Integer, ForeignKey
 from sqlalchemy.orm import DeclarativeBase, relationship, mapped_column, Mapped
 
 
@@ -75,15 +75,15 @@ class Task(Base):
     fingerprint_id: Mapped[int] = mapped_column(ForeignKey("fingerprints.id"))
     fingerprint: Mapped["Fingerprint"] = relationship(lazy="joined", uselist=False)
 
-    # zipped on pull from SCP. Ready to post.
-    zip_path: Mapped[str]
+    # tarped on pull from SCP. Ready to post.
+    tar_path: Mapped[str]
 
     # Status stamp
     status: Mapped[int] = mapped_column(Integer, default=0)
 
     # Inference server uid
     inference_server_uid: Mapped[str] = mapped_column(nullable=True, default=None)
-    inference_server_zip: Mapped[str] = mapped_column(nullable=True, default=None)
+    inference_server_tar: Mapped[str] = mapped_column(nullable=True, default=None)
 
     # Toggles check for final deletes
     deleted_local: Mapped[bool] = mapped_column(default=False)

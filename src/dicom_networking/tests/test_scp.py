@@ -13,8 +13,8 @@ from dicom_networking.scp import SCP
 from dicom_networking.scu import post_folder_to_dicom_node
 
 
-def get_test_dicom(path):
-    res = requests.get("https://xnat.bmia.nl/REST/projects/stwstrategyhn1/subjects/BMIAXNAT_S09203/experiments/BMIAXNAT_E62311/scans/1_3_6_1_4_1_40744_29_33371661027192187491509798061184654147/files?format=zip", stream=True)
+def get_test_dicom(path, url):
+    res = requests.get(url)
     res_io = BytesIO(res.content)
     zf = zipfile.ZipFile(file=res_io)
     zf.extractall(path)
@@ -27,8 +27,8 @@ class TestSCP(unittest.TestCase):
 
         self.test_case_dir = ".tmp/test_images/"
         if not os.path.isdir(self.test_case_dir):
-            get_test_dicom(self.test_case_dir)
-
+            get_test_dicom(path=self.test_case_dir, url="https://xnat.bmia.nl/REST/projects/stwstrategyhn1/subjects/BMIAXNAT_S09203/experiments/BMIAXNAT_E62311/scans/1_3_6_1_4_1_40744_29_33371661027192187491509798061184654147/files?format=zip")
+            get_test_dicom(path=self.test_case_dir, url="https://www.rubomedical.com/dicom_files/dicom_viewer_Mrbrain.zip")
         self.tmp_source = os.path.join(self.tmp_dir, "source")
         os.makedirs(self.tmp_source)
         self.scp = SCP(ae_title="SOURCE",

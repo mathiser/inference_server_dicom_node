@@ -33,7 +33,7 @@ class MockClient:
             try:
                 t = self.tasks[task.inference_server_uid]
                 res.status_code = 200
-                with open(t.zip_path, "br") as r:
+                with open(t.tar_path, "br") as r:
                     res._content = r.read()
 
             except Exception as e:

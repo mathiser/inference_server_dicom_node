@@ -103,8 +103,8 @@ class DB:
                  fingerprint_id) -> Task:
         storage_fol = self.generate_storage_folder()
         task = Task(fingerprint_id=fingerprint_id,
-                    zip_path=os.path.join(storage_fol, "input.zip"),
-                    inference_server_zip=os.path.join(storage_fol, "output.zip"))
+                    tar_path=os.path.join(storage_fol, "input.tar.gz"),
+                    inference_server_tar=os.path.join(storage_fol, "output.tar.gz"))
         return self.generic_add(task)
 
     def get_tasks_by_kwargs(self, kwargs) -> Query:

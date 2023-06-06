@@ -22,7 +22,10 @@ class TestDBDaemon(unittest.TestCase):
 
         self.test_case_dir = ".tmp/test_images/"
         if not os.path.isdir(self.test_case_dir):
-            get_test_dicom(self.test_case_dir)
+            get_test_dicom(path=self.test_case_dir,
+                           url="https://xnat.bmia.nl/REST/projects/stwstrategyhn1/subjects/BMIAXNAT_S09203/experiments/BMIAXNAT_E62311/scans/1_3_6_1_4_1_40744_29_33371661027192187491509798061184654147/files?format=zip")
+            get_test_dicom(path=self.test_case_dir,
+                           url="https://www.rubomedical.com/dicom_files/dicom_viewer_Mrbrain.zip")
 
         self.tmp_source = os.path.join(self.tmp_db_base_dir, "source")
         os.makedirs(self.tmp_source)
@@ -50,7 +53,7 @@ class TestDBDaemon(unittest.TestCase):
         self.daemon = Daemon(client=self.client, db=self.db, scp=self.scp)
 
     def tearDown(self) -> None:
-        shutil.rmtree(self.tmp_db_base_dir)
+        #shutil.rmtree(self.tmp_db_base_dir)
         self.scp.ae.shutdown()
         self.destination.ae.shutdown()
         del self.scp, self.destination
@@ -70,7 +73,7 @@ class TestDBDaemon(unittest.TestCase):
         self.daemon.fingerprint()
         self.assertEqual(1, self.db.get_tasks().count())
         self.assertEqual(1, len(os.listdir(self.db.data_dir)))
-        self.assertTrue(os.path.isfile(self.db.get_tasks().first().zip_path))
+        self.assertTrue(os.path.isfile(self.db.get_tasks().first().tar_path))
 
 
     def test_fingerprint_multi_model_match(self):
@@ -90,7 +93,7 @@ class TestDBDaemon(unittest.TestCase):
         self.daemon.fingerprint()
         self.assertEqual(1, self.db.get_tasks().count())
         self.assertEqual(1, len(os.listdir(self.db.data_dir)))
-        self.assertTrue(os.path.isfile(self.db.get_tasks().first().zip_path))
+        self.assertTrue(os.path.isfile(self.db.get_tasks().first().tar_path))
 
     def test_fingerprint_no_match(self):
         fp = self.db.add_fingerprint(model_human_readable_id="test",
@@ -153,7 +156,7 @@ class TestDBDaemon(unittest.TestCase):
         self.assertIsNotNone(task.inference_server_uid)
 
         self.daemon.get_tasks()
-        self.assertTrue(os.path.isfile(task.inference_server_zip))
+        self.assertTrue(os.path.isfile(task.inference_server_tar))
 
     def test_post_to_final_destinations(self):
         fp = self.db.add_fingerprint(model_human_readable_id="test",
@@ -167,7 +170,8 @@ class TestDBDaemon(unittest.TestCase):
         post_folder_to_dicom_node(scu_ip=self.scp.ip,
                                   scu_port=self.scp.port,
                                   scu_ae_title=self.scp.ae_title,
-                                  dicom_dir=self.test_case_dir)
+                                  dicom_dir=self.test_case_dir,
+                                )
 
         self.daemon.fingerprint()
         self.assertEqual(1, self.db.get_tasks_by_kwargs({"status": 0}).count())
