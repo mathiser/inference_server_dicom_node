@@ -17,7 +17,7 @@ class Main:
                  SCP_IP: str = "localhost",
                  SCP_PORT: int = 10000,
                  SCP_AE_TITLE: str = "DICOM_RECEIVER",
-                 TEMPORARY_STORAGE: str = "/tmp/DICOM/",
+                 TEMPORARY_STORAGE: str = ".tmp/DICOM/",
                  LOG_LEVEL: int = 20,
                  PYNETDICOM_LOG_LEVEL: str = "Normal",
                  DAEMON_RUN_INTERVAL: int = 10,

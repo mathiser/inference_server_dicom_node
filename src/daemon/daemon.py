@@ -182,7 +182,7 @@ class Daemon(threading.Thread):
     def run(self):
         while self.running:
             self.retire_tasks()
-            self.fingerprint(self.run_interval)
+            self.fingerprint()
             self.post_tasks()
             self.get_tasks()
             self.post_to_final_destinations()
