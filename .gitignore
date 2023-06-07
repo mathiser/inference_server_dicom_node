@@ -6,3 +6,4 @@ in
 __pycache__
 .idea
 .env
+venv

@@ -1,34 +1,77 @@
-import json
+import logging
 import os
+from typing import Union
 
-import dotenv
+import uvicorn as uvicorn
 
-from scp.scp import SCP
+from api.fast_api import DicomNodeAPI
+from client.client import Client
+from daemon.daemon import Daemon
+
 from database.db import DB
-from daemons.inference_server_daemon import InferenceServerDaemon
-
-dotenv.load_dotenv()
+from dicom_networking.scp import SCP
 
 
-def main():
-    scp = SCP(hostname=os.environ.get("SCP_HOSTNAME"),
-              port=int(os.environ.get("SCP_PORT")),
-              ae_title=os.environ.get("SCP_AE_TITLE"),
-              storage_dir=os.environ.get("INCOMING_DIR"),
-              delete_on_post=bool(os.environ.get("DELETE_ON_POST")),
-              block=False)
-    scp.run_scp()
+class Main:
+    def __init__(self,
+                 SCP_IP: str = "localhost",
+                 SCP_PORT: int = 10000,
+                 SCP_AE_TITLE: str = "DICOM_RECEIVER",
+                 TEMPORARY_STORAGE: str = "/tmp/DICOM/",
+                 LOG_LEVEL: int = 20,
+                 PYNETDICOM_LOG_LEVEL: str = "Normal",
+                 DAEMON_RUN_INTERVAL: int = 10,
+                 CERT_FILE: Union[str, bool] = "CERT/cert.crt",
+                 TIMEOUT: int = 7200,
+                 DB_BASEDIR: str = "./.data/DB",
+                 API_PORT: int = 8124):
+        self.SCP_IP = SCP_IP
+        self.SCP_PORT = SCP_PORT
+        self.SCP_AE_TITLE = SCP_AE_TITLE
+        self.TEMPORARY_STORAGE= TEMPORARY_STORAGE
+        self.LOG_LEVEL = LOG_LEVEL
+        self.PYNETDICOM_LOG_LEVEL=PYNETDICOM_LOG_LEVEL
+        self.DAEMON_RUN_INTERVAL=DAEMON_RUN_INTERVAL
+        self.CERT_FILE = CERT_FILE
+        self.TIMEOUT=TIMEOUT
+        self.DB_BASEDIR = DB_BASEDIR
+        self.API_PORT = API_PORT
 
-    db = DB(os.environ.get("FINGERPRINT_DIR"))
-    daemon = InferenceServerDaemon(scp=scp,
-                                   db=db,
-                                   cert_file=os.environ.get("CERT_FILE"),
-                                   post_timeout=int(os.environ.get("POST_TIMEOUT")),
-                                   post_interval=int(os.environ.get("POST_INTERVAL")),
-                                   post_after=int(os.environ.get("POST_AFTER")),
-                                   )
-    daemon.run()  # Blocks
+        for name in self.__dict__.keys():
+            if name in os.environ.keys():
+                self.__setattr__(name, os.environ[name])
+        LOG_FORMAT = '%(levelname)s:%(asctime)s:%(message)s'
+
+        logging.basicConfig(level=int(self.LOG_LEVEL), format=LOG_FORMAT)
+        self.logger = logging.getLogger(__name__)
+        self.logger.info(f"Instantiated Dicom Node with params: {self.__dict__}")
+
+    def run(self):
+        scp = SCP(ip=self.SCP_IP,
+                  port=self.SCP_PORT,
+                  ae_title=self.SCP_AE_TITLE,
+                  temporary_storage=self.TEMPORARY_STORAGE,
+                  log_level=self.LOG_LEVEL,
+                  pynetdicom_log_level=self.PYNETDICOM_LOG_LEVEL)
+
+        scp.run_scp(blocking=False)
+
+        db = DB(base_dir=self.DB_BASEDIR)
+        client = Client(cert=self.CERT_FILE)
+        daemon = Daemon(client=client,
+                        scp=scp,
+                        db=db,
+                        run_interval=int(self.DAEMON_RUN_INTERVAL),
+                        timeout=int(self.TIMEOUT))
+        daemon.start()
+
+        app = DicomNodeAPI(db=db, log_level=self.LOG_LEVEL)
+        uvicorn.run(app=app,  # Blocks
+                    host="localhost",
+                    port=int(self.API_PORT))
+        daemon.kill()
 
 
 if __name__ == "__main__":
-    main()
+    m = Main()
+    m.run()

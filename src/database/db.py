@@ -1,104 +1,197 @@
-import datetime
-import json
-import logging
 import os
-import tempfile
-from typing import List
-import re
-import sys
+import secrets
+from typing import Union, List
 
-sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
-from models import Fingerprint, Incoming, SCU
+import sqlalchemy
+from sqlalchemy.orm import sessionmaker, scoped_session, Query
+
+from database.models import Destination, Fingerprint, Trigger, Task, \
+    DestinationFingerprintAssociation
+from database.models import Base
 
 
 class DB:
-    def __init__(self, fingerprint_dir):
-        self.fingerprint_dir = fingerprint_dir
-        self.fingerprints = []
-        for fol, subs, files in os.walk(self.fingerprint_dir):
-            for file in files:
-                if file.endswith(".json"):
-                    file_path = os.path.join(fol, file)
-                    try:
-                        with open(file_path, "r") as r:
-                            fp_dict = json.loads(r.read())
-                            fp = Fingerprint(modality_regex=fp_dict["modality_regex"],
-                                             sop_class_uid_regex=fp_dict["sop_class_uid_regex"],
-                                             study_description_regex=fp_dict["study_description_regex"],
-                                             series_description_regex=fp_dict["series_description_regex"],
-                                             exclude_regex=fp_dict["exclude_regex"],
-                                             inference_server_url=fp_dict["inference_server_url"],
-                                             model_human_readable_id=fp_dict["model_human_readable_id"],
-                                             scus=[SCU(**scu) for scu in fp_dict["scus"]])
+    def __init__(self, base_dir):
+        self.base_dir = base_dir
+        self.data_dir = os.path.join(self.base_dir, "data")
+        self.db_dir = os.path.join(self.base_dir, "db")
 
-                            self.fingerprints.append(fp)
+        os.makedirs(self.base_dir, exist_ok=True)
+        os.makedirs(self.data_dir, exist_ok=True)
+        os.makedirs(self.db_dir, exist_ok=True)
 
-                    except Exception as e:
-                        logging.error(e)
-        if len(self.fingerprints) == 0:
-            logging.info("No fingerprints found")
-        else:
-            logging.info(f"Found the following fingerprints:")
-            for i, fp in enumerate(self.fingerprints):
-                logging.info(f"{str(i)}: {str(fp)}")
+        self.database_path = f'{self.db_dir}/database.db'
+        self.database_url = f'sqlite:///{self.database_path}'
 
-    def get_fingerprints(self):
-        return self.fingerprints
+        self.engine = sqlalchemy.create_engine(self.database_url, future=True)
 
-    def get_fingerprint_from_incoming(self, incoming: Incoming) -> List[Fingerprint]:
-        to_return = []  # container for matching fingerprints
-        for fingerprint in self.fingerprints:
-            ## Start off by checking if include is present in any of the tags.
-            exclude_re = re.compile(r"{}".format(fingerprint.exclude_regex), re.IGNORECASE)
-            exclude_bool = False
-            for tag in [incoming.Modality, incoming.SeriesDescription, incoming.StudyDescription, incoming.SOPClassUID]:
-                exclude_bool += bool(exclude_re.search(tag))
+        # Check if database exists - if not, create scheme
+        if not os.path.isfile(self.database_path):
+            Base.metadata.create_all(self.engine)
 
-            # If exclude_bool has become True, then skip to nex fingerprint
-            if exclude_bool:
-                continue
+        self.session_maker = sessionmaker(bind=self.engine, expire_on_commit=False)
+        self.Session = scoped_session(self.session_maker)
 
-            # If the code reach this part, any exclude_regex is not in any of the tags.
-            # Now look for matching fingerprints.
-            modality_re = re.compile(r"{}".format(fingerprint.modality_regex), re.IGNORECASE)
-            sop_class_uid_re = re.compile(r"{}".format(fingerprint.sop_class_uid_regex), re.IGNORECASE)
-            series_re = re.compile(r"{}".format(fingerprint.series_description_regex), re.IGNORECASE)
-            study_re = re.compile(r"{}".format(fingerprint.study_description_regex), re.IGNORECASE)
+    def generate_storage_folder(self):
+        path = os.path.join(self.data_dir, secrets.token_urlsafe(8))
+        os.makedirs(path)
+        return path
 
-            # Must match all to be deemed a match
-            if modality_re.search(incoming.Modality) and series_re.search(incoming.SeriesDescription) and \
-                    study_re.search(incoming.StudyDescription) and sop_class_uid_re.search(incoming.SOPClassUID):
-                to_return.append(fingerprint)
+    def add_destination_to_fingerprint(self, fingerprint_id, destination_id):
+        ass = self.generic_add(DestinationFingerprintAssociation(fingerprint_id=fingerprint_id,
+                                                                 destination_id=destination_id))
+        return ass
 
-        return to_return
+    ################### Fingerprinting ##################
+    def add_fingerprint(self,
+                        model_human_readable_id: str,
+                        inference_server_url: str,
+                        version: Union[str, None] = None,
+                        description: Union[str, None] = None,
+                        destination_ids: List[int] = [],
+                        delete_locally: Union[bool, None] = None,
+                        delete_remotely: Union[bool, None] = None,
+                        ) -> Fingerprint:
+        fp = Fingerprint(version=version,
+                         description=description,
+                         model_human_readable_id=model_human_readable_id,
+                         inference_server_url=inference_server_url,
+                         delete_remotely=delete_remotely,
+                         delete_locally=delete_locally)
+        fp = self.generic_add(fp)
 
-if __name__ == "__main__":
-    with tempfile.TemporaryDirectory() as d:
-        fp = {"modality_regex": "MR",
-              "sop_class_uid_regex": "",
-              "exclude_regex": "a^",
-              "study_description_regex": "HEST|Imp",
-              "series_description_regex": "",
-              "inference_server_url": "https://omen.onerm.dk/api/tasks/",
-              "model_human_readable_id": "cns_t1_oars",
-              "scus": [{"scu_ip": "127.0.0.1",
-                   "scu_port": 11110,
-                   "scu_ae_title": "DICOM_ENDPOINT_AE"}
-              ]}
+        if destination_ids:
+            for dest_id in destination_ids:
+                self.add_destination_to_fingerprint(fp.id, dest_id)
 
-        with open(os.path.join(d, "fingerprint.json"), "w") as f:
-            f.write(json.dumps(fp))
-        db = DB(d)
-        print(db.get_fingerprints())
+        return self.get_fingerprint(fp.id)
 
-        inc = Incoming(path="asdf",
-                 last_timestamp=datetime.datetime.now(),
-                 first_timestamp=datetime.datetime.now(),
-                 PatientID="123123123",
-                 StudyDescription="Neck Important neck",
-                 SeriesDescription="This is an important series to perform",
-                 SOPClassUID="1.2.840.10008.5.1.4.1.1.4",
-                 Modality="MR")
-        fp = db.get_fingerprint_from_incoming(incoming=inc)
-        print(fp)
-        assert fp
+    def get_fingerprint(self, id) -> Fingerprint:
+        with self.Session() as session:
+            inc = session.query(Fingerprint).filter_by(id=id).first()
+        return inc
+
+    def get_fingerprints(self) -> Query:
+        with self.Session() as session:
+            return session.query(Fingerprint)
+
+    def add_trigger(self,
+                    fingerprint_id: int,
+                    study_description_pattern: Union[str, None] = None,
+                    series_description_pattern: Union[str, None] = None,
+                    sop_class_uid_exact: Union[str, None] = None,
+                    exclude_pattern: Union[str, None] = None) -> Trigger:
+
+        trigger = Trigger(fingerprint_id=fingerprint_id,
+                          study_description_pattern=study_description_pattern,
+                          series_description_pattern=series_description_pattern,
+                          sop_class_uid_exact=sop_class_uid_exact,
+                          exclude_pattern=exclude_pattern)
+        return self.generic_add(trigger)
+
+    def add_destination(self,
+                        scu_ip: str,
+                        scu_port: int,
+                        scu_ae_title: str) -> Destination:
+        dest = Destination(scu_ip=scu_ip,
+                           scu_port=scu_port,
+                           scu_ae_title=scu_ae_title)
+        return self.generic_add(dest)
+
+    ##### DYNAMIC #####
+    def add_task(self,
+                 fingerprint_id) -> Task:
+        storage_fol = self.generate_storage_folder()
+        task = Task(fingerprint_id=fingerprint_id,
+                    tar_path=os.path.join(storage_fol, "input.tar.gz"),
+                    inference_server_tar=os.path.join(storage_fol, "output.tar.gz"))
+        return self.generic_add(task)
+
+    def get_tasks_by_kwargs(self, kwargs) -> Query:
+        with self.Session() as session:
+            return session.query(Task).filter_by(**kwargs)
+
+    def get_tasks(self) -> Query:
+        return self.generic_get_all(Task)
+
+    def update_task(self,
+                    task_id: int,
+                    inference_server_uid: Union[str, None] = None,
+                    deleted_local: Union[bool, None] = None,
+                    deleted_remote: Union[bool, None] = None,
+                    status: Union[int, None] = None) -> Task:
+        with self.Session() as session:
+            t = session.query(Task).filter_by(id=task_id).first()
+            if inference_server_uid:
+                t.inference_server_uid = inference_server_uid
+            if deleted_local:
+                t.deleted_local = deleted_local
+            if deleted_remote:
+                t.deleted_remote = deleted_remote
+            if status:
+                t.status = status
+
+            session.commit()
+            session.refresh(t)
+            return t
+
+    def generic_add(self, item):
+        with self.Session() as session:
+            session.add(item)
+            session.commit()
+            session.refresh(item)
+
+        return item
+
+    def generic_get(self, cls, id):
+        with self.Session() as session:
+            return session.query(cls).filter_by(id=id).first()
+
+    def generic_get_all(self, cls):
+        with self.Session() as session:
+            return session.query(cls)
+
+    def generic_delete(self, cls, id):
+        with self.Session() as session:
+            try:
+                deleted_rows = session.query(cls).filter_by(id=id).delete()
+                session.commit()
+                return deleted_rows
+            except Exception as e:
+                print(e)
+                return False
+
+    def delete_destination(self, destination_id):
+        try:
+            return self.generic_delete(Destination, destination_id)
+
+        except:
+            return False
+
+    def delete_trigger(self, trigger_id):
+        try:
+            return self.generic_delete(Trigger, trigger_id)
+        except:
+            return False
+
+
+    def delete_fingerprint(self, fingerprint_id):
+        try:
+            # Cannot get cascades to work. Doing the work for sqlalchemy. Fix at some point.
+            fp = self.get_fingerprint(fingerprint_id)
+
+            # Delete triggers
+            for t in fp.triggers:
+                self.generic_delete(Trigger, t.id)
+
+            with self.Session() as session:
+                try:
+                    deleted_rows = session.query(DestinationFingerprintAssociation).filter_by(fingerprint_id=fp.id).delete()
+                    session.commit()
+                except Exception as e:
+                    print(e)
+
+            return self.generic_delete(Fingerprint, fingerprint_id)
+        except Exception as e:
+            print(e)
+            raise e
