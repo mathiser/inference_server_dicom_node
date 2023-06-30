@@ -1,2 +1,4 @@
 venv
 .tmp
+dev_loop
+mount*

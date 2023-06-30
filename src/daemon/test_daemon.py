@@ -59,7 +59,7 @@ class TestDBDaemon(unittest.TestCase):
         del self.scp, self.destination
 
     def test_fingerprint_match(self):
-        fp = self.db.add_fingerprint(model_human_readable_id="test",
+        fp = self.db.add_fingerprint(human_readable_id="test",
                                      inference_server_url="test")
         self.db.add_trigger(fingerprint_id=fp.id,
                             sop_class_uid_exact="1.2.840.10008.5.1.4.1.1.2")
@@ -77,7 +77,7 @@ class TestDBDaemon(unittest.TestCase):
 
 
     def test_fingerprint_multi_model_match(self):
-        fp = self.db.add_fingerprint(model_human_readable_id="test",
+        fp = self.db.add_fingerprint(human_readable_id="test",
                                      inference_server_url="test")
         self.db.add_trigger(fingerprint_id=fp.id,
                             sop_class_uid_exact="1.2.840.10008.5.1.4.1.1.2")
@@ -96,7 +96,7 @@ class TestDBDaemon(unittest.TestCase):
         self.assertTrue(os.path.isfile(self.db.get_tasks().first().tar_path))
 
     def test_fingerprint_no_match(self):
-        fp = self.db.add_fingerprint(model_human_readable_id="test",
+        fp = self.db.add_fingerprint(human_readable_id="test",
                                      inference_server_url="test")
         self.db.add_trigger(fingerprint_id=fp.id,
                             sop_class_uid_exact="1.2.840.10008.5.1.4.1.1.1")
@@ -113,7 +113,7 @@ class TestDBDaemon(unittest.TestCase):
         self.assertEqual(0, len(os.listdir(self.db.data_dir)))
 
     def test_post_tasks_single_modal(self):
-        fp = self.db.add_fingerprint(model_human_readable_id="test",
+        fp = self.db.add_fingerprint(human_readable_id="test",
                                      inference_server_url="test")
         self.db.add_trigger(fingerprint_id=fp.id,
                             sop_class_uid_exact="1.2.840.10008.5.1.4.1.1.2")
@@ -132,7 +132,7 @@ class TestDBDaemon(unittest.TestCase):
         self.assertIsNotNone(task.inference_server_uid)
 
     def generate_fp(self):
-        fp = self.db.add_fingerprint(model_human_readable_id="test",
+        fp = self.db.add_fingerprint(human_readable_id="test",
                                      inference_server_url="test")
         return fp
 
@@ -159,7 +159,7 @@ class TestDBDaemon(unittest.TestCase):
         self.assertTrue(os.path.isfile(task.inference_server_tar))
 
     def test_post_to_final_destinations(self):
-        fp = self.db.add_fingerprint(model_human_readable_id="test",
+        fp = self.db.add_fingerprint(human_readable_id="test",
                                      inference_server_url="test")
         self.db.add_trigger(fingerprint_id=fp.id,
                             sop_class_uid_exact="1.2.840.10008.5.1.4.1.1.2")

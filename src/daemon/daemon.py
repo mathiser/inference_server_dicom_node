@@ -41,7 +41,7 @@ class Daemon(threading.Thread):
 
     @log
     def tar_dirs(self, tar_path, paths: List):
-        with tarfile.TarFile.open(tar_path, mode="w|gz") as tf:
+        with tarfile.TarFile.open(tar_path, mode="w") as tf:
             for path in paths:
                 tf.add(path, arcname=os.path.basename(path))
     @log
@@ -82,14 +82,13 @@ class Daemon(threading.Thread):
             res = self.client.post_task(task)
             self.logger.debug(res)
             if res.ok:
-                uid = json.loads(res.content)
-                self.db.update_task(task_id=task.id, status=1, inference_server_uid=uid)
+                res_task = res.json()
+                self.db.update_task(task_id=task.id, status=1, inference_server_uid=res_task["uid"])
             else:
                 self.db.update_task(task_id=task.id, status=-1)  # Tag for deletion
 
     @log
     def is_retirement_ready(self, timestamp: datetime.datetime):
-        print(datetime.datetime.now() - timestamp)
         return (datetime.datetime.now() - timestamp) > self.timeout
 
     @log
@@ -126,7 +125,7 @@ class Daemon(threading.Thread):
                 self.db.update_task(task.id, status=3)
             else:
                 self.logger.info(
-                    f"This status code should not be possible for Task: {task.inference_server_task.uid}. Go talk to an admin")
+                    f"This status code should not be possible for Task: {task.inference_server_uid}. Go talk to an admin")
 
     @log
     def post_to_final_destinations(self):

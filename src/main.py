@@ -17,13 +17,13 @@ class Main:
                  SCP_IP: str = "localhost",
                  SCP_PORT: int = 10000,
                  SCP_AE_TITLE: str = "DICOM_RECEIVER",
-                 TEMPORARY_STORAGE: str = ".tmp/DICOM/",
+                 TEMPORARY_STORAGE: str = "/opt/app/DICOM",
                  LOG_LEVEL: int = 20,
                  PYNETDICOM_LOG_LEVEL: str = "Normal",
                  DAEMON_RUN_INTERVAL: int = 10,
-                 CERT_FILE: Union[str, bool] = "CERT/cert.crt",
+                 CERT_FILE: Union[str, bool] = "/opt/app/cert.crt",
                  TIMEOUT: int = 7200,
-                 DB_BASEDIR: str = "./.data/DB",
+                 DB_BASEDIR: str = "/opt/app/database",
                  API_PORT: int = 8124):
         self.SCP_IP = SCP_IP
         self.SCP_PORT = SCP_PORT
@@ -48,7 +48,7 @@ class Main:
 
     def run(self):
         scp = SCP(ip=self.SCP_IP,
-                  port=self.SCP_PORT,
+                  port=int(self.SCP_PORT),
                   ae_title=self.SCP_AE_TITLE,
                   temporary_storage=self.TEMPORARY_STORAGE,
                   log_level=self.LOG_LEVEL,

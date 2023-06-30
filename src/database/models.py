@@ -57,7 +57,7 @@ class Fingerprint(Base):
 
     # Inference Server
     inference_server_url: Mapped[str]
-    model_human_readable_id: Mapped[str]
+    human_readable_id: Mapped[str]
 
     destinations: Mapped[List["Destination"]] = relationship(lazy="joined",
                                                              secondary="destination_fingerprint_associations",

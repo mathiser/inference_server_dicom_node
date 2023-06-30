@@ -22,7 +22,7 @@ class DicomNodeAPI(FastAPI):
 
         @self.post("/fingerprints/")
         def add_fingerprint(inference_server_url: str,
-                            model_human_readable_id: str,
+                            human_readable_id: str,
                             version: Union[str, None] = None,
                             description: Union[str, None] = None,
                             destination_ids: Union[List[int], None] = None,
@@ -33,7 +33,7 @@ class DicomNodeAPI(FastAPI):
                                            description=description,
                                            destination_ids=destination_ids,
                                            inference_server_url=inference_server_url,
-                                           model_human_readable_id=model_human_readable_id,
+                                           human_readable_id=human_readable_id,
                                            delete_remotely=delete_remotely,
                                            delete_locally=delete_locally)
 

@@ -44,7 +44,7 @@ class DB:
 
     ################### Fingerprinting ##################
     def add_fingerprint(self,
-                        model_human_readable_id: str,
+                        human_readable_id: str,
                         inference_server_url: str,
                         version: Union[str, None] = None,
                         description: Union[str, None] = None,
@@ -54,7 +54,7 @@ class DB:
                         ) -> Fingerprint:
         fp = Fingerprint(version=version,
                          description=description,
-                         model_human_readable_id=model_human_readable_id,
+                         human_readable_id=human_readable_id,
                          inference_server_url=inference_server_url,
                          delete_remotely=delete_remotely,
                          delete_locally=delete_locally)

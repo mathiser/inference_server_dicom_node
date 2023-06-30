@@ -18,7 +18,7 @@ class TestDB(unittest.TestCase):
         shutil.rmtree(self.tmp_dir)
 
     def test_add_fingerprint(self):
-        fp = self.db.add_fingerprint(inference_server_url="https://awesome-server.org", model_human_readable_id="test")
+        fp = self.db.add_fingerprint(inference_server_url="https://awesome-server.org", human_readable_id="test")
         self.assertIsInstance(fp, Fingerprint)
         return fp
 

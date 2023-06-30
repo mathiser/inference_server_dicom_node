@@ -34,7 +34,7 @@ class TestFingerprint(unittest.TestCase):
         shutil.rmtree(self.tmp_dir)
 
     def get_fingerprint(self):
-        return self.db.add_fingerprint(inference_server_url="http://test.com.org", model_human_readable_id="test")
+        return self.db.add_fingerprint(inference_server_url="http://test.com.org", human_readable_id="test")
     def test_fast_fingerprint_pass(self):
         fp = self.get_fingerprint()
         self.db.add_trigger(fingerprint_id=fp.id, sop_class_uid_exact="1.2.3")
