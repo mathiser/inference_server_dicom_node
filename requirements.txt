@@ -1,4 +1,0 @@
-requests
-pynetdicom
-python-dotenv
-pydantic

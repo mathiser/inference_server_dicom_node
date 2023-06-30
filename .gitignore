@@ -6,3 +6,7 @@ in
 __pycache__
 .idea
 .env
+venv
+.*
+mount*
+dev_loop
