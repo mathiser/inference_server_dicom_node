@@ -21,12 +21,17 @@ class TestDBDaemon(unittest.TestCase):
         self.db = DB(base_dir=self.tmp_db_dir)
 
         self.test_case_dir = ".tmp/test_images/"
-        if not os.path.isdir(self.test_case_dir):
-            get_test_dicom(path=self.test_case_dir,
-                           url="https://xnat.bmia.nl/REST/projects/stwstrategyhn1/subjects/BMIAXNAT_S09203/experiments/BMIAXNAT_E62311/scans/1_3_6_1_4_1_40744_29_33371661027192187491509798061184654147/files?format=zip")
-            get_test_dicom(path=self.test_case_dir,
-                           url="https://www.rubomedical.com/dicom_files/dicom_viewer_Mrbrain.zip")
+        
+        self.ct_test = os.path.join(self.test_case_dir, "ct")
+        if not os.path.isdir(self.ct_test):
+            os.makedirs(self.ct_test)
+            get_test_dicom(path=self.ct_test, url="https://xnat.bmia.nl/REST/projects/stwstrategyhn1/subjects/BMIAXNAT_S09203/experiments/BMIAXNAT_E62311/scans/1_3_6_1_4_1_40744_29_33371661027192187491509798061184654147/files?format=zip")
 
+        self.mr_test = os.path.join(self.test_case_dir, "mr")
+        if not os.path.isdir(self.mr_test):
+            os.makedirs(self.mr_test)    
+            get_test_dicom(path=self.mr_test, url="https://zenodo.org/record/16956/files/DICOM.zip")
+        
         self.tmp_source = os.path.join(self.tmp_db_base_dir, "source")
         os.makedirs(self.tmp_source)
         self.scp = SCP(ae_title="SOURCE",
@@ -34,7 +39,7 @@ class TestDBDaemon(unittest.TestCase):
                        port=11110,
                        temporary_storage=self.tmp_source,
                        pynetdicom_log_level="Normal",
-                       log_level=20
+                       log_level=10
                        )
 
         self.tmp_destination = os.path.join(self.tmp_db_base_dir, "destination")
@@ -44,16 +49,16 @@ class TestDBDaemon(unittest.TestCase):
                                port=11111,
                                temporary_storage=self.tmp_destination,
                                pynetdicom_log_level="Normal",
-                               log_level=20
+                               log_level=10
                                )
 
         self.scp.run_scp(blocking=False)
         self.destination.run_scp(blocking=False)
         self.client = MockClient()
-        self.daemon = Daemon(client=self.client, db=self.db, scp=self.scp)
+        self.daemon = Daemon(client=self.client, db=self.db, scp=self.scp, log_level=10)
 
     def tearDown(self) -> None:
-        #shutil.rmtree(self.tmp_db_base_dir)
+       # shutil.rmtree(self.tmp_db_base_dir)
         self.scp.ae.shutdown()
         self.destination.ae.shutdown()
         del self.scp, self.destination
@@ -156,17 +161,18 @@ class TestDBDaemon(unittest.TestCase):
         self.assertIsNotNone(task.inference_server_uid)
 
         self.daemon.get_tasks()
+        print(task.inference_server_tar)
         self.assertTrue(os.path.isfile(task.inference_server_tar))
 
     def test_post_to_final_destinations(self):
         fp = self.db.add_fingerprint(human_readable_id="test",
                                      inference_server_url="test")
-        self.db.add_trigger(fingerprint_id=fp.id,
-                            sop_class_uid_exact="1.2.840.10008.5.1.4.1.1.2")
+        trigger = self.db.add_trigger(sop_class_uid_exact="1.2.840.10008.5.1.4.1.1.2",
+                                      fingerprint_id=fp.id)
         dest = self.db.add_destination(scu_ip=self.destination.ip,
                                 scu_port=self.destination.port,
-                                scu_ae_title=self.destination.ae_title)
-        self.db.add_destination_to_fingerprint(fp.id, dest.id)
+                                scu_ae_title=self.destination.ae_title,
+                                fingerprint_id=fp.id)
         post_folder_to_dicom_node(scu_ip=self.scp.ip,
                                   scu_port=self.scp.port,
                                   scu_ae_title=self.scp.ae_title,

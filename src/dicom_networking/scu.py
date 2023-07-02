@@ -30,7 +30,7 @@ def post_folder_to_dicom_node(scu_ip, scu_port, scu_ae_title, dicom_dir) -> bool
                         logging.info('Connection timed out, was aborted or received invalid response')
 
                 except InvalidDicomError as e:
-                    logging.debug(str(e))
+                    pass
                 except Exception as e:
                     logging.error(str(e))
                     raise e
