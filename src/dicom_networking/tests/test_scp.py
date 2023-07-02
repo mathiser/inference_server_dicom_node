@@ -16,7 +16,7 @@ from dicom_networking.scu import post_folder_to_dicom_node
 def get_test_dicom(path, url):
     res = requests.get(url)
     res_io = BytesIO(res.content)
-    zf = zipfile.ZipFile(file=res_io)
+    zf = zipfile.ZipFile(file=res_io, compression=zipfile.ZIP_DEFLATED)
     zf.extractall(path)
     return path
 
@@ -34,7 +34,7 @@ class TestSCP(unittest.TestCase):
             get_test_dicom(path=self.ct_test, url="https://xnat.bmia.nl/REST/projects/stwstrategyhn1/subjects/BMIAXNAT_S09203/experiments/BMIAXNAT_E62311/scans/1_3_6_1_4_1_40744_29_33371661027192187491509798061184654147/files?format=zip")
         if not os.path.isdir(self.mr_test):
             os.makedirs(os.makedirs(self.mr_test))    
-            get_test_dicom(path=self.mr_test, url="https://www.rubomedical.com/dicom_files/dicom_viewer_Mrbrain.zip")
+            get_test_dicom(path=self.mr_test, url="https://zenodo.org/record/16956/files/DICOM.zip")
         
         self.tmp_source = os.path.join(self.tmp_dir, "source")
         os.makedirs(self.tmp_source)

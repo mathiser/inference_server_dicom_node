@@ -20,17 +20,17 @@ class TestDBDaemon(unittest.TestCase):
         os.makedirs(self.tmp_db_dir)
         self.db = DB(base_dir=self.tmp_db_dir)
 
-       
         self.test_case_dir = ".tmp/test_images/"
+        
         self.ct_test = os.path.join(self.test_case_dir, "ct")
-        self.mr_test = os.path.join(self.test_case_dir, "mr")
-
         if not os.path.isdir(self.ct_test):
             os.makedirs(self.ct_test)
             get_test_dicom(path=self.ct_test, url="https://xnat.bmia.nl/REST/projects/stwstrategyhn1/subjects/BMIAXNAT_S09203/experiments/BMIAXNAT_E62311/scans/1_3_6_1_4_1_40744_29_33371661027192187491509798061184654147/files?format=zip")
+
+        self.mr_test = os.path.join(self.test_case_dir, "mr")
         if not os.path.isdir(self.mr_test):
             os.makedirs(self.mr_test)    
-            get_test_dicom(path=self.mr_test, url="https://www.rubomedical.com/dicom_files/dicom_viewer_Mrbrain.zip")
+            get_test_dicom(path=self.mr_test, url="https://zenodo.org/record/16956/files/DICOM.zip")
         
         self.tmp_source = os.path.join(self.tmp_db_base_dir, "source")
         os.makedirs(self.tmp_source)

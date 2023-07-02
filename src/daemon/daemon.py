@@ -84,7 +84,7 @@ class Daemon(threading.Thread):
             if res.ok:
                 res_task = json.loads(res.content)
                 print(res_task)
-                self.db.update_task(task_id=task.id, status=1, inference_server_uid=res_task["inference_server_uid"])
+                self.db.update_task(task_id=task.id, status=1, inference_server_uid=res_task["uid"])
             else:
                 self.db.update_task(task_id=task.id, status=-1)  # Tag for deletion
 

@@ -14,7 +14,7 @@ class MockClient:
         uid = secrets.token_urlsafe()
         task.inference_server_uid = uid
         self.tasks[uid] = task
-        res_t = {"inference_server_uid": uid,
+        res_t = {"uid": uid,
                            "inference_server_tar": task.inference_server_tar,
                            "tar_path": task.tar_path}
         

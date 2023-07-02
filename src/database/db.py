@@ -53,7 +53,6 @@ class DB:
                         inference_server_url: str,
                         version: Union[str, None] = None,
                         description: Union[str, None] = None,
-                        destination_ids: List[int] = [],
                         delete_locally: Union[bool, None] = None,
                         delete_remotely: Union[bool, None] = None,
                         ) -> Fingerprint:
@@ -64,10 +63,6 @@ class DB:
                          delete_remotely=delete_remotely,
                          delete_locally=delete_locally)
         fp = self.generic_add(fp)
-
-        if destination_ids:
-            for dest_id in destination_ids:
-                self.add_destination_to_fingerprint(fp.id, dest_id)
 
         return self.get_fingerprint(fp.id)
 
@@ -116,8 +111,8 @@ class DB:
                  fingerprint_id) -> Task:
         storage_fol = self.generate_storage_folder()
         task = Task(fingerprint_id=fingerprint_id,
-                    tar_path=os.path.join(storage_fol, "input.tar.gz"),
-                    inference_server_tar=os.path.join(storage_fol, "output.tar.gz"))
+                    tar_path=os.path.join(storage_fol, "input.tar"),
+                    inference_server_tar=os.path.join(storage_fol, "output.tar"))
         return self.generic_add(task)
 
     def get_tasks_by_kwargs(self, kwargs) -> Query:

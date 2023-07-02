@@ -25,13 +25,11 @@ class DicomNodeAPI(FastAPI):
                             human_readable_id: str,
                             version: Union[str, None] = None,
                             description: Union[str, None] = None,
-                            destination_ids: Union[List[int], None] = None,
                             delete_locally: Union[bool, None] = None,
                             delete_remotely: Union[bool, None] = None,
                             ):
             return self.db.add_fingerprint(version=version,
                                            description=description,
-                                           destination_ids=destination_ids,
                                            inference_server_url=inference_server_url,
                                            human_readable_id=human_readable_id,
                                            delete_remotely=delete_remotely,
@@ -56,7 +54,7 @@ class DicomNodeAPI(FastAPI):
             return list(self.db.generic_get_all(Destination))
 
         @self.post("/triggers/")
-        def add_trigger(fingerprint_id: int,
+        def add_trigger(fingerprint_id: Union[int, None] = None,
                         study_description_pattern: Union[str, None] = None,
                         series_description_pattern: Union[str, None] = None,
                         sop_class_uid_exact: Union[str, None] = None,
@@ -70,10 +68,14 @@ class DicomNodeAPI(FastAPI):
         @self.post("/destinations/")
         def add_destinations(scu_ip: str,
                                  scu_port: int,
-                                 scu_ae_title: str):
+                                 scu_ae_title: str,
+                                 fingerprint_id: Union[int, None] = None,):
+                                 
             return self.db.add_destination(scu_ip=scu_ip,
                                            scu_port=scu_port,
-                                           scu_ae_title=scu_ae_title)
+                                           scu_ae_title=scu_ae_title,
+                                           fingerprint_id=fingerprint_id)
+
 
         @self.delete("/triggers/{trigger_id}")
         def delete_trigger(trigger_id: int):
