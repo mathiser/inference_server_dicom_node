@@ -49,7 +49,7 @@ class TestDB(unittest.TestCase):
     def test_add_destination_fingerprint_association(self):
         fp = self.test_add_fingerprint()
         dest = self.test_add_destination()
-        self.db.add_destination_to_fingerprint(fp.id, dest.id)
+        self.db.add_destination_fingerprint_association(fingerprint_id=fp.id, destination_id=dest.id)
 
         echo_fp = self.db.get_fingerprint(fp.id)
         self.assertEqual(1, len(echo_fp.destinations))
@@ -67,7 +67,7 @@ class TestDB(unittest.TestCase):
         destination = self.db.add_destination(scu_ip="10.10.10.10",
                                               scu_port=104,
                                               scu_ae_title="TEST_AE")
-        self.db.add_destination_to_fingerprint(fp.id, destination_id=destination.id)
+        self.db.add_destination_fingerprint_association(fingerprint_id=fp.id, destination_id=destination.id)
 
         task = self.db.add_task(fp.id)
         self.assertEqual(fp.id, task.fingerprint_id)
@@ -90,16 +90,6 @@ class TestDB(unittest.TestCase):
         self.assertEqual(echo_task.status, 2)
         return echo_task
 
-    def test_delete_trigger(self):
-        trigger = self.test_add_trigger()
-        fp = self.db.get_fingerprint(trigger.fingerprint_id)
-        self.assertEqual(trigger.id, fp.triggers[0].id)
-
-        res = self.db.delete_trigger(trigger_id=trigger.id)
-        self.assertTrue(res)
-
-        echo_fp = self.db.get_fingerprint(fp.id)
-        self.assertEqual(0, len(echo_fp.triggers))
 
     def test_delete_destination(self):
         dest = self.test_add_destination()

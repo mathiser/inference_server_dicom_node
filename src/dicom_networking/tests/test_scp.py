@@ -26,9 +26,16 @@ class TestSCP(unittest.TestCase):
         self.tmp_dir = tempfile.mkdtemp(dir=".tmp", prefix=f"{datetime.datetime.now()}_")
 
         self.test_case_dir = ".tmp/test_images/"
-        if not os.path.isdir(self.test_case_dir):
-            get_test_dicom(path=self.test_case_dir, url="https://xnat.bmia.nl/REST/projects/stwstrategyhn1/subjects/BMIAXNAT_S09203/experiments/BMIAXNAT_E62311/scans/1_3_6_1_4_1_40744_29_33371661027192187491509798061184654147/files?format=zip")
-            get_test_dicom(path=self.test_case_dir, url="https://www.rubomedical.com/dicom_files/dicom_viewer_Mrbrain.zip")
+        self.ct_test = os.path.join(self.test_case_dir, "ct")
+        
+        self.mr_test = os.path.join(self.test_case_dir, "mr")
+        if not os.path.isdir(self.ct_test):
+            os.makedirs(os.makedirs(self.ct_test))
+            get_test_dicom(path=self.ct_test, url="https://xnat.bmia.nl/REST/projects/stwstrategyhn1/subjects/BMIAXNAT_S09203/experiments/BMIAXNAT_E62311/scans/1_3_6_1_4_1_40744_29_33371661027192187491509798061184654147/files?format=zip")
+        if not os.path.isdir(self.mr_test):
+            os.makedirs(os.makedirs(self.mr_test))    
+            get_test_dicom(path=self.mr_test, url="https://www.rubomedical.com/dicom_files/dicom_viewer_Mrbrain.zip")
+        
         self.tmp_source = os.path.join(self.tmp_dir, "source")
         os.makedirs(self.tmp_source)
         self.scp = SCP(ae_title="SOURCE",

@@ -82,8 +82,9 @@ class Daemon(threading.Thread):
             res = self.client.post_task(task)
             self.logger.debug(res)
             if res.ok:
-                res_task = res.json()
-                self.db.update_task(task_id=task.id, status=1, inference_server_uid=res_task["uid"])
+                res_task = json.loads(res.content)
+                print(res_task)
+                self.db.update_task(task_id=task.id, status=1, inference_server_uid=res_task["inference_server_uid"])
             else:
                 self.db.update_task(task_id=task.id, status=-1)  # Tag for deletion
 
@@ -106,7 +107,7 @@ class Daemon(threading.Thread):
     def get_tasks(self):
         tasks = list(self.db.get_tasks_by_kwargs({"status": 1}))
         for task in tasks:
-
+            print(task.inference_server_uid)
             res = self.client.get_task(task)
 
             if res.ok:

@@ -19,14 +19,22 @@ class DestinationFingerprintAssociation(Base):
     fingerprint: Mapped["Fingerprint"] = relationship(lazy="joined",
                                                       back_populates="destination_associations")
 
+class TriggerFingerprintAssociation(Base):
+    __tablename__ = "trigger_fingerprint_associations"
+    timestamp: Mapped[datetime.datetime] = mapped_column(default=datetime.datetime.now)
+
+    trigger_id: Mapped[int] = mapped_column(ForeignKey("triggers.id"), primary_key=True)
+    fingerprint_id: Mapped[int] = mapped_column(ForeignKey("fingerprints.id"), primary_key=True)
+
+    fingerprint: Mapped["Fingerprint"] = relationship(lazy="joined",
+                                                      back_populates="trigger_associations")
+
 
 ######## Fingerprint Schemas ###########
 class Trigger(Base):
     __tablename__ = "triggers"
     id: Mapped[int] = mapped_column(unique=True, primary_key=True, autoincrement=True)
     timestamp: Mapped[datetime.datetime] = mapped_column(default=datetime.datetime.now)
-
-    fingerprint_id: Mapped[int] = mapped_column(ForeignKey("fingerprints.id", ondelete="cascade"))
 
     # Regex matches
     study_description_pattern: Mapped[Optional[str]]
@@ -53,7 +61,10 @@ class Fingerprint(Base):
     version: Mapped[str] = mapped_column(default="1.0")
     description: Mapped[str] = mapped_column(default="")
 
-    triggers: Mapped[List["Trigger"]] = relationship(lazy="joined", cascade="all, delete")
+    triggers: Mapped[List["Trigger"]] = relationship(lazy="joined",
+                                                     secondary="trigger_fingerprint_associations",
+                                                     viewonly=True)
+    trigger_associations: Mapped[List[TriggerFingerprintAssociation]] = relationship(back_populates="fingerprint")
 
     # Inference Server
     inference_server_url: Mapped[str]

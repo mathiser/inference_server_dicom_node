@@ -6,7 +6,7 @@ import sqlalchemy
 from sqlalchemy.orm import sessionmaker, scoped_session, Query
 
 from database.models import Destination, Fingerprint, Trigger, Task, \
-    DestinationFingerprintAssociation
+    DestinationFingerprintAssociation, TriggerFingerprintAssociation
 from database.models import Base
 
 
@@ -37,11 +37,16 @@ class DB:
         os.makedirs(path)
         return path
 
-    def add_destination_to_fingerprint(self, fingerprint_id, destination_id):
-        ass = self.generic_add(DestinationFingerprintAssociation(fingerprint_id=fingerprint_id,
-                                                                 destination_id=destination_id))
+    def add_destination_fingerprint_association(self, fingerprint_id, destination_id):
+        ass = DestinationFingerprintAssociation(fingerprint_id=fingerprint_id, destination_id=destination_id)
+        ass = self.generic_add(ass)
         return ass
 
+    def add_trigger_fingerprint_association(self, fingerprint_id, trigger_id):
+        ass = TriggerFingerprintAssociation(fingerprint_id=fingerprint_id, trigger_id=trigger_id)
+        ass = self.generic_add(ass)
+        return ass
+    
     ################### Fingerprinting ##################
     def add_fingerprint(self,
                         human_readable_id: str,
@@ -76,28 +81,36 @@ class DB:
             return session.query(Fingerprint)
 
     def add_trigger(self,
-                    fingerprint_id: int,
                     study_description_pattern: Union[str, None] = None,
                     series_description_pattern: Union[str, None] = None,
                     sop_class_uid_exact: Union[str, None] = None,
-                    exclude_pattern: Union[str, None] = None) -> Trigger:
+                    exclude_pattern: Union[str, None] = None,
+                    fingerprint_id: Union[int, None] = None) -> Trigger:
 
-        trigger = Trigger(fingerprint_id=fingerprint_id,
-                          study_description_pattern=study_description_pattern,
+        trigger = Trigger(study_description_pattern=study_description_pattern,
                           series_description_pattern=series_description_pattern,
                           sop_class_uid_exact=sop_class_uid_exact,
                           exclude_pattern=exclude_pattern)
-        return self.generic_add(trigger)
+        trigger = self.generic_add(trigger)
+        if fingerprint_id:
+            self.add_trigger_fingerprint_association(fingerprint_id=fingerprint_id, trigger_id=trigger.id)
+        
+        return trigger
 
     def add_destination(self,
                         scu_ip: str,
                         scu_port: int,
-                        scu_ae_title: str) -> Destination:
+                        scu_ae_title: str,
+                        fingerprint_id: Union[int, None] = None) -> Destination:
         dest = Destination(scu_ip=scu_ip,
                            scu_port=scu_port,
                            scu_ae_title=scu_ae_title)
-        return self.generic_add(dest)
+        dest = self.generic_add(dest)
 
+        if fingerprint_id:
+            self.add_destination_fingerprint_association(fingerprint_id=fingerprint_id, destination_id=dest.id)
+        
+        return dest
     ##### DYNAMIC #####
     def add_task(self,
                  fingerprint_id) -> Task:

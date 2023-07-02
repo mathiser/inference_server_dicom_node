@@ -12,14 +12,19 @@ class MockClient:
 
     def post_task(self, task, success=True) -> requests.Response:
         uid = secrets.token_urlsafe()
+        task.inference_server_uid = uid
         self.tasks[uid] = task
+        res_t = {"inference_server_uid": uid,
+                           "inference_server_tar": task.inference_server_tar,
+                           "tar_path": task.tar_path}
+        
         res = requests.Response()
         if success:
             res.status_code = 200
-            res._content = json.dumps(uid)
+            res._content = json.dumps(res_t)
         else:
             res.status_code = 500
-            res._content = json.dumps(uid)
+            res._content = json.dumps(res_t)
 
         return res
 
@@ -30,16 +35,12 @@ class MockClient:
             res.status_code = error_code
             res._content = json.dumps('There is a little black spot on the sun to day')
         else:
-            try:
-                t = self.tasks[task.inference_server_uid]
-                res.status_code = 200
-                with open(t.tar_path, "br") as r:
-                    res._content = r.read()
-
-            except Exception as e:
-                res.status_code = 554
-                res._content = json.dumps("Task not found")
-
+            t = self.tasks[task.inference_server_uid]
+            print(t)
+            print(f"HERE: {t}")
+            res.status_code = 200
+            with open(t.tar_path, "br") as r:
+                res._content = r.read()
         return res
 
     def delete_task(self, task) -> requests.Response:
