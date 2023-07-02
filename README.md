@@ -1,3 +1,5 @@
+# THIS READ ME IS NOT UPDATED FOR VERSION 2.0 YET
+
 # InferenceServer Dicom Relay (ISDR)
 This InferenceServer Dicom Relay (ISDR) is setup to serve [InferenceServer](https://github.com/mathiser/inference_server) through regular dicom networking protocols.
 The supported workflow is as follows:
